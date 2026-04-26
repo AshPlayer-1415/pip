@@ -1,0 +1,47 @@
+{
+  "name": "pip",
+  "version": "0.1.0",
+  "description": "A gentle private macOS desktop companion for reminders, hydration, screen breaks, and motivation.",
+  "main": "src/main.js",
+  "author": "Pip",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac dmg"
+  },
+  "build": {
+    "appId": "com.pip.desktop",
+    "productName": "Pip",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "darkModeSupport": true,
+      "hardenedRuntime": true
+    },
+    "dmg": {
+      "backgroundColor": "#111217",
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    }
+  },
+  "devDependencies": {
+    "electron": "^30.5.1",
+    "electron-builder": "^24.13.3"
+  }
+}

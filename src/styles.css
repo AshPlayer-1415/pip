@@ -1,0 +1,520 @@
+:root {
+  color-scheme: dark;
+  --bg: #0d0f13;
+  --panel: #151820;
+  --panel-strong: #1d212b;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text: #f4f0e8;
+  --muted: #a5aab7;
+  --quiet: #737987;
+  --accent: #d7b98e;
+  --accent-soft: rgba(215, 185, 142, 0.14);
+  --danger: #ff8e8e;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  color: var(--text);
+  font-size: 14px;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+.panel-body {
+  padding: 12px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.panel-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 496px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(29, 33, 43, 0.98), rgba(14, 16, 21, 0.98));
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 12px 14px 8px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #101218;
+  background: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 0 0 6px var(--accent-soft);
+  flex: 0 0 auto;
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  color: var(--quiet);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.title {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-actions {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.stack {
+  display: grid;
+  gap: 14px;
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 13px;
+  color: #cfd3dc;
+  font-weight: 700;
+}
+
+.card {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px;
+}
+
+.hero-card {
+  display: grid;
+  gap: 12px;
+  background: var(--panel-strong);
+}
+
+.nudge-label {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.nudge-message {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.empty-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.button {
+  min-height: 36px;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--line-strong);
+}
+
+.button.primary {
+  color: #111217;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 750;
+}
+
+.button.ghost {
+  color: var(--muted);
+  background: transparent;
+}
+
+.button.danger {
+  color: var(--danger);
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quick-actions .button {
+  width: 100%;
+  padding: 0 10px;
+}
+
+.safe-on {
+  outline: 2px solid rgba(138, 215, 255, 0.24);
+  background: rgba(138, 215, 255, 0.12);
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.item-main {
+  min-width: 0;
+}
+
+.item-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-meta {
+  margin-top: 2px;
+  color: var(--quiet);
+  font-size: 12px;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.input,
+.select {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--text);
+  background: rgba(9, 11, 15, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  outline: none;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.personality-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.personality-option {
+  min-height: 76px;
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--text);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+}
+
+.personality-option.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.option-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #111217;
+  font-size: 10px;
+  font-weight: 850;
+  background: var(--accent);
+}
+
+.option-label {
+  font-weight: 760;
+}
+
+.option-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle {
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.toggle::after {
+  content: "";
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e8e2d7;
+  transition: transform 140ms ease;
+}
+
+.toggle.is-on {
+  background: var(--accent);
+}
+
+.toggle.is-on::after {
+  transform: translateX(19px);
+  background: #101218;
+}
+
+.frequency {
+  width: 76px;
+  text-align: right;
+}
+
+.onboarding {
+  min-height: 100%;
+  display: grid;
+  align-content: center;
+  gap: 18px;
+}
+
+.onboarding h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.16;
+}
+
+.onboarding p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.bubble-body {
+  background: transparent;
+  overflow: hidden;
+}
+
+.bubble {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  background: rgba(18, 20, 26, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.bubble:hover {
+  background: rgba(27, 30, 38, 0.94);
+}
+
+.bubble-mark {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: #101218;
+  background: var(--accent);
+  font-size: 16px;
+  font-weight: 850;
+  box-shadow: 0 0 0 8px var(--accent-soft);
+}
+
+.bubble.is-active .bubble-mark {
+  animation: breathe 1800ms ease-in-out infinite;
+}
+
+.bubble-callout {
+  display: none;
+  min-width: 0;
+  color: #f8f4ec;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.bubble.is-expanded {
+  border-radius: 28px;
+}
+
+.bubble.is-expanded .bubble-callout {
+  display: block;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@media (max-width: 390px) {
+  .panel-body {
+    padding: 8px;
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  .quick-actions,
+  .personality-grid {
+    grid-template-columns: 1fr;
+  }
+}

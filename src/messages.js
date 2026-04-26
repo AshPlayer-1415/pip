@@ -2,7 +2,7 @@ const messageBank = {
   cozy: {
     label: 'Cozy Friend',
     accent: '#d7b98e',
-    mark: 'CF',
+    mark: '😊',
     water: [
       'A small sip would be lovely.',
       'Water break, nice and easy.',
@@ -55,7 +55,7 @@ const messageBank = {
   strict: {
     label: 'Strict Coach',
     accent: '#93a7ff',
-    mark: 'SC',
+    mark: '🗿',
     water: [
       'Water. Then back to work.',
       'Hydrate now.',
@@ -108,7 +108,7 @@ const messageBank = {
   space: {
     label: 'Space Buddy',
     accent: '#8ad7ff',
-    mark: 'SB',
+    mark: '🤓',
     water: [
       'Hydration check from orbit.',
       'Sip sequence ready.',
@@ -161,7 +161,7 @@ const messageBank = {
   guardian: {
     label: 'Dark Guardian',
     accent: '#b091ff',
-    mark: 'DG',
+    mark: '😐',
     water: [
       'Guard your energy. Drink.',
       'Water, quietly.',
@@ -214,7 +214,7 @@ const messageBank = {
   gremlin: {
     label: 'Funny Gremlin',
     accent: '#9ee493',
-    mark: 'FG',
+    mark: '😏',
     water: [
       'Sip before your brain protests.',
       'Water time. Very official.',

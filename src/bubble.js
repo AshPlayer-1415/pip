@@ -8,6 +8,7 @@ let collapseTimer;
 function applyState(state) {
   const meta = state.personalityMeta;
   document.documentElement.style.cssText = `--accent: ${meta.accent}; --accent-soft: ${meta.accent}22;`;
+  bubbleMark.className = `bubble-mark personality-${meta.id || 'cozy'}`;
   bubbleMark.textContent = meta.mark || 'P';
 
   const hasPopup = Boolean(state.currentNudge && !state.presentationSafeMode);

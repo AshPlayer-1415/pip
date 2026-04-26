@@ -2,7 +2,8 @@ const app = document.getElementById('app');
 
 let state;
 let view = 'dashboard';
-let draftPersonality = 'cozy';
+let onboardingStep = 0;
+let onboardingDraft;
 
 const typeLabels = {
   pills: 'Pills',
@@ -16,7 +17,7 @@ const personalityNotes = {
   strict: 'Direct prompts with a clear edge.',
   space: 'Mission-style check-ins.',
   guardian: 'Quiet, focused, protective.',
-  gremlin: 'Dry jokes with useful timing.'
+  gremlin: 'Playful nudges with dry humor.'
 };
 
 function escapeHtml(value) {
@@ -41,12 +42,52 @@ function defaultReminderTime() {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+function selectedPersonalityMeta(id) {
+  return state.personalityOptions.find((option) => option.id === id) || state.personalityOptions[0] || state.personalityMeta;
+}
+
+function ensureOnboardingDraft() {
+  if (onboardingDraft) {
+    return;
+  }
+
+  onboardingDraft = {
+    companionName: state.companionName || 'Pip',
+    personality: state.personality || 'cozy',
+    privateMode: Boolean(state.privateMode),
+    nudges: cloneState(state.nudges)
+  };
+}
+
+function updateOnboardingDraftFromForm() {
+  const form = app.querySelector('[data-onboarding-form]');
+  if (!form || !onboardingDraft) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(form).entries());
+  if (data.companionName !== undefined) {
+    onboardingDraft.companionName = String(data.companionName).trim().slice(0, 28) || 'Pip';
+  }
+
+  for (const key of Object.keys(onboardingDraft.nudges)) {
+    const value = Number(data[`${key}-frequency`]);
+    if (Number.isFinite(value)) {
+      onboardingDraft.nudges[key].frequencyMinutes = Math.min(480, Math.max(5, value));
+    }
+  }
+}
+
+function renderAvatar(className, meta, size = '') {
+  return `<div class="${className} personality-${escapeHtml(meta.id || 'cozy')} ${size}">${escapeHtml(meta.mark)}</div>`;
+}
+
 function renderTopbar() {
   const meta = state.personalityMeta;
   return `
     <header class="topbar" style="${accentStyle(meta.accent)}">
       <div class="brand">
-        <div class="avatar">${escapeHtml(meta.mark)}</div>
+        ${renderAvatar('avatar', meta)}
         <div class="brand-copy">
           <div class="eyebrow">${escapeHtml(meta.label)}</div>
           <h1 class="title">${escapeHtml(state.companionName || 'Pip')}</h1>
@@ -65,13 +106,13 @@ function renderPersonalityOptions(selected) {
     <div class="personality-grid">
       ${state.personalityOptions.map((option) => `
         <button
-          class="personality-option ${selected === option.id ? 'is-selected' : ''}"
+          class="personality-option personality-${escapeHtml(option.id)} ${selected === option.id ? 'is-selected' : ''}"
           style="${accentStyle(option.accent)}"
           data-personality="${option.id}"
           type="button"
         >
           <span class="option-top">
-            <span class="mini-mark">${escapeHtml(option.mark)}</span>
+            ${renderAvatar('mini-mark', option)}
             <span class="option-label">${escapeHtml(option.label)}</span>
           </span>
           <span class="option-note">${escapeHtml(personalityNotes[option.id] || '')}</span>
@@ -81,28 +122,101 @@ function renderPersonalityOptions(selected) {
   `;
 }
 
+function renderOnboardingNav(primaryLabel, showBack = true) {
+  return `
+    <div class="button-row onboarding-nav">
+      ${showBack ? '<button class="button ghost" data-action="onboardingBack" type="button">Back</button>' : ''}
+      <button class="button primary" data-action="${primaryLabel === 'Start Pip' ? 'finishOnboarding' : 'onboardingNext'}" type="button">${primaryLabel}</button>
+    </div>
+  `;
+}
+
+function renderOnboardingPreferences() {
+  return `
+    <div class="card form">
+      ${Object.entries(onboardingDraft.nudges).map(([key, config]) => `
+        <div class="setting-row">
+          <div>
+            <p class="item-title">${escapeHtml(state.nudgeLabels[key])}</p>
+            <div class="item-meta">Every <input class="input frequency" name="${key}-frequency" type="number" min="5" max="480" step="5" value="${config.frequencyMinutes}" /> min</div>
+          </div>
+          <button class="toggle ${config.enabled ? 'is-on' : ''}" data-onboard-nudge-toggle="${key}" type="button"></button>
+        </div>
+      `).join('')}
+    </div>
+    <div class="card form">
+      <div class="setting-row">
+        <div>
+          <p class="item-title">Private Mode</p>
+          <div class="item-meta">Notifications hide reminder text.</div>
+        </div>
+        <button class="toggle ${onboardingDraft.privateMode ? 'is-on' : ''}" data-action="toggleOnboardingPrivate" type="button"></button>
+      </div>
+      <p class="empty-copy">Presentation Safe Mode silences popups while you share your screen.</p>
+    </div>
+  `;
+}
+
 function renderOnboarding() {
-  const selected = draftPersonality || state.personality || 'cozy';
+  ensureOnboardingDraft();
+  const selectedMeta = selectedPersonalityMeta(onboardingDraft.personality);
+  state.personalityMeta = selectedMeta;
+  document.documentElement.style.cssText = accentStyle(selectedMeta.accent);
+
+  const steps = [
+    `
+      <div class="onboarding-card">
+        ${renderAvatar('avatar hero-avatar', selectedMeta)}
+        <div>
+          <h1>Meet Pip</h1>
+          <p>A calm desktop companion for small reminders, breaks, and better workdays.</p>
+        </div>
+        ${renderOnboardingNav('Get started', false)}
+      </div>
+    `,
+    `
+      <form class="form onboarding-card" data-onboarding-form>
+        <div>
+          <h1>Name your companion</h1>
+          <p>You can change this later.</p>
+        </div>
+        <label class="field">
+          <span>Name</span>
+          <input class="input" name="companionName" maxlength="28" value="${escapeHtml(onboardingDraft.companionName)}" autofocus />
+        </label>
+        ${renderOnboardingNav('Continue')}
+      </form>
+    `,
+    `
+      <div class="form onboarding-card" data-onboarding-form>
+        <div>
+          <h1>Choose a personality</h1>
+          <p>Pick the tone that will feel welcome on a busy day.</p>
+        </div>
+        ${renderPersonalityOptions(onboardingDraft.personality)}
+        ${renderOnboardingNav('Continue')}
+      </div>
+    `,
+    `
+      <form class="form onboarding-card" data-onboarding-form>
+        <div>
+          <h1>Set your rhythm</h1>
+          <p>Start gentle. Tune the details anytime.</p>
+        </div>
+        ${renderOnboardingPreferences()}
+        ${renderOnboardingNav('Start Pip')}
+      </form>
+    `
+  ];
+
   return `
     ${renderTopbar()}
     <section class="content">
       <div class="onboarding">
-        <div>
-          <h1>Set up your companion</h1>
-          <p>Choose a name and a tone. Everything stays on this Mac.</p>
+        <div class="step-dots" aria-hidden="true">
+          ${steps.map((_step, index) => `<span class="${index === onboardingStep ? 'is-active' : ''}"></span>`).join('')}
         </div>
-        <form class="form" data-form="onboarding">
-          <label class="field">
-            <span>Name</span>
-            <input class="input" name="companionName" maxlength="28" value="${escapeHtml(state.companionName || 'Pip')}" />
-          </label>
-          <div class="field">
-            <label>Personality</label>
-            ${renderPersonalityOptions(selected)}
-            <input type="hidden" name="personality" value="${escapeHtml(selected)}" />
-          </div>
-          <button class="button primary" type="submit">Start</button>
-        </form>
+        ${steps[onboardingStep]}
       </div>
     </section>
   `;
@@ -133,6 +247,44 @@ function renderCurrentNudge() {
           <button class="button ghost" data-snooze="${nudge.category}" data-option="off">Turn off</button>
         ` : ''}
         <button class="button ghost" data-action="dismiss">Done</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderTodayDashboard() {
+  const today = state.today || {};
+  const nextReminder = today.nextReminder;
+  const mode = today.mode || { label: 'Normal', detail: 'Gentle nudges are active.', tone: 'normal' };
+
+  return `
+    <section class="today-panel">
+      <div class="section-head">
+        <h2 class="section-title">Today</h2>
+        <span class="mode-pill mode-${escapeHtml(mode.tone)}">${escapeHtml(mode.label)}</span>
+      </div>
+      <div class="today-grid">
+        <div class="today-stat">
+          <span class="stat-label">Mode</span>
+          <strong>${escapeHtml(mode.label)}</strong>
+          <span>${escapeHtml(mode.detail)}</span>
+        </div>
+        <div class="today-stat">
+          <span class="stat-label">Next</span>
+          <strong>${nextReminder ? escapeHtml(nextReminder.displayTime) : 'None'}</strong>
+          <span>${nextReminder ? escapeHtml(state.privateMode ? 'Private reminder' : nextReminder.title) : 'No reminders scheduled.'}</span>
+        </div>
+        <div class="today-stat">
+          <span class="stat-label">Missed</span>
+          <strong>${Number(today.missedCount || 0)}</strong>
+          <span>Queued while quiet.</span>
+        </div>
+      </div>
+      <div class="quick-actions quick-actions-four">
+        <button class="button" data-trigger-nudge="water">Water</button>
+        <button class="button" data-trigger-nudge="eyeBreak">Eye Break</button>
+        <button class="button" data-trigger-nudge="stretch">Stretch</button>
+        <button class="button" data-trigger-nudge="motivation">Motivate Me</button>
       </div>
     </section>
   `;
@@ -193,10 +345,14 @@ function renderDashboard() {
     ${renderTopbar()}
     <section class="content">
       <div class="stack">
+        ${renderTodayDashboard()}
         ${renderCurrentNudge()}
         <div class="quick-actions">
           <button class="button ${state.presentationSafeMode ? 'safe-on' : ''}" data-action="toggleSafe">
             Safe Mode
+          </button>
+          <button class="button ${state.privateMode ? 'safe-on' : ''}" data-action="togglePrivate">
+            Private
           </button>
           <button class="button" data-view="add">Add Reminder</button>
           <button class="button" data-view="settings">Settings</button>
@@ -283,14 +439,14 @@ function renderSettings() {
             <div class="setting-row">
               <div>
                 <p class="item-title">Presentation Safe Mode</p>
-                <div class="item-meta">Suppresses notifications and bubble popups.</div>
+                <div class="item-meta">Silences notifications and bubble popups.</div>
               </div>
               <button class="toggle ${state.presentationSafeMode ? 'is-on' : ''}" data-setting-toggle="presentationSafeMode" type="button"></button>
             </div>
             <div class="setting-row">
               <div>
                 <p class="item-title">Private Mode</p>
-                <div class="item-meta">Native notifications use generic text.</div>
+                <div class="item-meta">Notifications show generic text only.</div>
               </div>
               <button class="toggle ${state.privateMode ? 'is-on' : ''}" data-setting-toggle="privateMode" type="button"></button>
             </div>
@@ -326,7 +482,9 @@ function render() {
 
 async function refresh(nextState) {
   state = nextState || await window.pipAPI.getState();
-  draftPersonality = state.personality;
+  if (!onboardingDraft) {
+    ensureOnboardingDraft();
+  }
   render();
 }
 
@@ -345,6 +503,27 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (target.dataset.action === 'onboardingNext') {
+    updateOnboardingDraftFromForm();
+    onboardingStep = Math.min(3, onboardingStep + 1);
+    render();
+    return;
+  }
+
+  if (target.dataset.action === 'onboardingBack') {
+    updateOnboardingDraftFromForm();
+    onboardingStep = Math.max(0, onboardingStep - 1);
+    render();
+    return;
+  }
+
+  if (target.dataset.action === 'finishOnboarding') {
+    updateOnboardingDraftFromForm();
+    await refresh(await window.pipAPI.completeOnboarding(onboardingDraft));
+    view = 'dashboard';
+    return;
+  }
+
   if (target.dataset.view) {
     view = target.dataset.view;
     render();
@@ -355,18 +534,44 @@ app.addEventListener('click', async (event) => {
     const form = target.closest('form');
     const personality = target.dataset.personality;
     const hidden = form && form.querySelector('input[name="personality"]');
-    draftPersonality = personality;
+    if (onboardingDraft && !state.onboardingComplete) {
+      onboardingDraft.personality = personality;
+    }
     if (hidden) {
       hidden.value = personality;
     }
     state.personality = personality;
-    state.personalityMeta = state.personalityOptions.find((option) => option.id === personality) || state.personalityMeta;
+    state.personalityMeta = selectedPersonalityMeta(personality);
     render();
     return;
   }
 
   if (target.dataset.action === 'toggleSafe') {
     await refresh(await window.pipAPI.updateSettings({ presentationSafeMode: !state.presentationSafeMode }));
+    return;
+  }
+
+  if (target.dataset.action === 'togglePrivate') {
+    await refresh(await window.pipAPI.updateSettings({ privateMode: !state.privateMode }));
+    return;
+  }
+
+  if (target.dataset.action === 'toggleOnboardingPrivate') {
+    onboardingDraft.privateMode = !onboardingDraft.privateMode;
+    render();
+    return;
+  }
+
+  if (target.dataset.onboardNudgeToggle) {
+    updateOnboardingDraftFromForm();
+    const key = target.dataset.onboardNudgeToggle;
+    onboardingDraft.nudges[key].enabled = !onboardingDraft.nudges[key].enabled;
+    render();
+    return;
+  }
+
+  if (target.dataset.triggerNudge) {
+    await refresh(await window.pipAPI.triggerNudge(target.dataset.triggerNudge));
     return;
   }
 
@@ -423,12 +628,15 @@ app.addEventListener('submit', async (event) => {
   const form = event.target;
   const data = formData(form);
 
-  if (form.dataset.form === 'onboarding') {
-    await refresh(await window.pipAPI.completeOnboarding({
-      companionName: data.companionName,
-      personality: data.personality || draftPersonality
-    }));
-    view = 'dashboard';
+  if (Object.prototype.hasOwnProperty.call(form.dataset, 'onboardingForm')) {
+    updateOnboardingDraftFromForm();
+    if (onboardingStep < 3) {
+      onboardingStep += 1;
+      render();
+    } else {
+      await refresh(await window.pipAPI.completeOnboarding(onboardingDraft));
+      view = 'dashboard';
+    }
     return;
   }
 
@@ -447,7 +655,7 @@ app.addEventListener('submit', async (event) => {
     }
     await refresh(await window.pipAPI.updateSettings({
       companionName: data.companionName,
-      personality: data.personality || draftPersonality,
+      personality: data.personality || state.personality,
       nudges
     }));
     view = 'dashboard';

@@ -96,6 +96,63 @@ button {
   font-weight: 800;
   box-shadow: 0 0 0 6px var(--accent-soft);
   flex: 0 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar,
+.mini-mark,
+.bubble-mark {
+  background: var(--avatar-bg, var(--accent));
+}
+
+.avatar::after,
+.mini-mark::after,
+.bubble-mark::after {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: inherit;
+  border: 1px solid rgba(16, 18, 24, 0.22);
+  opacity: 0.55;
+}
+
+.avatar,
+.mini-mark,
+.bubble-mark {
+  isolation: isolate;
+}
+
+.avatar {
+  z-index: 0;
+}
+
+.hero-avatar {
+  width: 64px;
+  height: 64px;
+  font-size: 15px;
+  box-shadow: 0 0 0 8px var(--accent-soft), 0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+.personality-cozy {
+  --avatar-bg: radial-gradient(circle at 35% 30%, #fff1c7, #d7b98e 58%, #9f7655);
+}
+
+.personality-strict {
+  --avatar-bg: linear-gradient(135deg, #eff3ff 0 28%, #93a7ff 28% 68%, #4d61b8 68%);
+}
+
+.personality-space {
+  --avatar-bg: radial-gradient(circle at 68% 28%, #ffffff 0 8%, transparent 9%), radial-gradient(circle at 30% 70%, #8ad7ff, #5066d8 62%, #202746);
+}
+
+.personality-guardian {
+  --avatar-bg: radial-gradient(circle at 45% 30%, #d8c6ff, #7a5ad7 46%, #1b1428 82%);
+  color: #f5f0ff;
+}
+
+.personality-gremlin {
+  --avatar-bg: linear-gradient(145deg, #e5ffd5 0 22%, #9ee493 22% 62%, #557a4e 62%);
 }
 
 .brand-copy {
@@ -244,13 +301,22 @@ button {
 
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
 .quick-actions .button {
   width: 100%;
   padding: 0 10px;
+  min-width: 0;
+}
+
+.quick-actions-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.quick-actions-four .button {
+  font-size: 12px;
 }
 
 .safe-on {
@@ -368,6 +434,9 @@ button {
   font-size: 10px;
   font-weight: 850;
   background: var(--accent);
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
 }
 
 .option-label {
@@ -424,8 +493,15 @@ button {
 .onboarding {
   min-height: 100%;
   display: grid;
-  align-content: center;
+  align-content: start;
+  gap: 14px;
+}
+
+.onboarding-card {
+  display: grid;
   gap: 18px;
+  align-content: center;
+  min-height: 430px;
 }
 
 .onboarding h1 {
@@ -438,6 +514,96 @@ button {
   margin: 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.onboarding-nav {
+  justify-content: space-between;
+}
+
+.step-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+.step-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.step-dots span.is-active {
+  width: 18px;
+  background: var(--accent);
+}
+
+.today-panel {
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.045));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.today-stat {
+  min-height: 92px;
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(10, 12, 16, 0.36);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.today-stat strong {
+  font-size: 16px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-stat span:last-child {
+  color: var(--quiet);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.stat-label {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.mode-pill {
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: #111217;
+  background: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mode-private,
+.mode-safe,
+.mode-snoozed {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--line);
 }
 
 .bubble-body {
@@ -477,6 +643,8 @@ button {
   font-size: 16px;
   font-weight: 850;
   box-shadow: 0 0 0 8px var(--accent-soft);
+  position: relative;
+  overflow: hidden;
 }
 
 .bubble.is-active .bubble-mark {
@@ -520,7 +688,13 @@ button {
   }
 
   .quick-actions,
-  .personality-grid {
+  .quick-actions-four,
+  .personality-grid,
+  .today-grid {
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-card {
+    min-height: 0;
   }
 }

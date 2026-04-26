@@ -106,6 +106,76 @@ function scheduledDateForToday(time, now = new Date()) {
   return scheduled;
 }
 
+function scheduledDateForReminder(reminder, now = new Date()) {
+  const scheduled = scheduledDateForToday(reminder.time, now);
+  if (!scheduled) {
+    return null;
+  }
+
+  if (scheduled <= now) {
+    scheduled.setDate(scheduled.getDate() + 1);
+  }
+
+  return scheduled;
+}
+
+function displayTime(date) {
+  return date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function getNextReminder() {
+  const now = new Date();
+  const upcoming = state.reminders
+    .filter((reminder) => reminder.enabled)
+    .map((reminder) => ({
+      reminder,
+      scheduledAt: scheduledDateForReminder(reminder, now)
+    }))
+    .filter((item) => item.scheduledAt)
+    .sort((a, b) => a.scheduledAt - b.scheduledAt)[0];
+
+  if (!upcoming) {
+    return null;
+  }
+
+  return {
+    id: upcoming.reminder.id,
+    title: upcoming.reminder.title,
+    type: upcoming.reminder.type,
+    time: upcoming.reminder.time,
+    displayTime: displayTime(upcoming.scheduledAt),
+    dateKey: localDateKey(upcoming.scheduledAt)
+  };
+}
+
+function getSnoozedCount(now = Date.now()) {
+  return NUDGE_KEYS.filter((key) => {
+    const config = state.nudges[key];
+    return config.enabled && config.snoozedUntil && (config.snoozedUntil === 'off' || new Date(config.snoozedUntil).getTime() > now);
+  }).length;
+}
+
+function getModeSummary() {
+  const snoozedCount = getSnoozedCount();
+
+  if (state.presentationSafeMode) {
+    return { label: 'Presentation Safe', detail: 'Notifications are quiet.', tone: 'safe' };
+  }
+
+  if (state.privateMode) {
+    return { label: 'Private', detail: 'Notifications hide reminder text.', tone: 'private' };
+  }
+
+  if (snoozedCount > 0) {
+    return { label: 'Snoozed', detail: `${snoozedCount} nudge${snoozedCount === 1 ? '' : 's'} paused.`, tone: 'snoozed' };
+  }
+
+  return { label: 'Normal', detail: 'Gentle nudges are active.', tone: 'normal' };
+}
+
 function normalizeState(nextState) {
   const normalized = deepMerge(defaultState, nextState || {});
 
@@ -155,7 +225,8 @@ function publicState() {
     personalityMeta: {
       label: personality.label,
       accent: personality.accent,
-      mark: personality.mark
+      mark: personality.mark,
+      id: state.personality
     },
     personalityOptions: Object.entries(messageBank).map(([id, meta]) => ({
       id,
@@ -163,7 +234,13 @@ function publicState() {
       accent: meta.accent,
       mark: meta.mark
     })),
-    nudgeLabels
+    nudgeLabels,
+    today: {
+      mode: getModeSummary(),
+      nextReminder: getNextReminder(),
+      missedCount: state.missedQueue.length,
+      snoozedCount: getSnoozedCount()
+    }
   };
 }
 
@@ -397,7 +474,7 @@ function sendNativeNotification({ title, body, genericBody = 'You have a private
   notification.show();
 }
 
-function showNudge(category) {
+function showNudge(category, options = {}) {
   const message = pickMessage(state.personality, category);
   const item = {
     id: randomUUID(),
@@ -405,6 +482,7 @@ function showNudge(category) {
     category,
     label: nudgeLabels[category],
     message,
+    source: options.source || 'scheduled',
     createdAt: new Date().toISOString()
   };
 
@@ -425,6 +503,14 @@ function showNudge(category) {
     genericBody: 'A gentle check-in is ready.',
     onClick: showPanel
   });
+}
+
+function triggerManualNudge(category) {
+  if (!NUDGE_KEYS.includes(category)) {
+    return;
+  }
+
+  showNudge(category, { source: 'manual' });
 }
 
 function showReminder(reminder) {
@@ -587,6 +673,23 @@ function registerIpc() {
     const personality = messageBank[payload.personality] ? payload.personality : 'cozy';
     state.companionName = String(payload.companionName || 'Pip').trim().slice(0, 28) || 'Pip';
     state.personality = personality;
+    if (typeof payload.privateMode === 'boolean') {
+      state.privateMode = payload.privateMode;
+    }
+    if (payload.nudges && typeof payload.nudges === 'object') {
+      for (const key of NUDGE_KEYS) {
+        const incoming = payload.nudges[key];
+        if (!incoming) {
+          continue;
+        }
+        if (typeof incoming.enabled === 'boolean') {
+          state.nudges[key].enabled = incoming.enabled;
+        }
+        if (incoming.frequencyMinutes !== undefined) {
+          state.nudges[key].frequencyMinutes = Math.min(480, Math.max(5, Number(incoming.frequencyMinutes) || defaultState.nudges[key].frequencyMinutes));
+        }
+      }
+    }
     state.onboardingComplete = true;
     const now = new Date().toISOString();
     for (const key of NUDGE_KEYS) {
@@ -655,6 +758,11 @@ function registerIpc() {
 
   ipcMain.handle('nudge:snooze', (_event, payload = {}) => {
     snoozeCategory(payload.category, payload.option);
+    return publicState();
+  });
+
+  ipcMain.handle('nudge:trigger', (_event, category) => {
+    triggerManualNudge(category);
     return publicState();
   });
 

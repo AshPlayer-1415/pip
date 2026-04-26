@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('pipAPI', {
   completeOnboarding: (payload) => ipcRenderer.invoke('settings:completeOnboarding', payload),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
   snoozeNudge: (payload) => ipcRenderer.invoke('nudge:snooze', payload),
+  triggerNudge: (category) => ipcRenderer.invoke('nudge:trigger', category),
   dismissNudge: () => ipcRenderer.invoke('nudge:dismiss'),
   clearQueue: () => ipcRenderer.invoke('queue:clear'),
   addReminder: (payload) => ipcRenderer.invoke('reminders:add', payload),

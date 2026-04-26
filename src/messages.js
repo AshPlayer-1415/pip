@@ -4,24 +4,52 @@ const messageBank = {
     accent: '#d7b98e',
     mark: 'CF',
     water: [
-      'A little water would be kind to future you.',
-      'Soft check-in: your glass could use a refill.',
-      'Tiny pause, tiny sip, then back to it.'
+      'A small sip would be lovely.',
+      'Water break, nice and easy.',
+      'Your glass might like a visit.',
+      'Tiny pause. Tiny sip.',
+      'A refill could feel good soon.',
+      'Gentle hydration check.',
+      'Sip, breathe, continue.',
+      'A little water for the next stretch.',
+      'Soft reminder: drink some water.',
+      'Take care of future you.'
     ],
     eyeBreak: [
-      'Let your eyes wander somewhere far away for a moment.',
-      'Twenty calm seconds off-screen would be lovely.',
-      'Your focus has been steady. Give your eyes a small rest.'
+      'Rest your eyes for a moment.',
+      'Look away and soften your gaze.',
+      'Give your eyes a quiet pause.',
+      'A faraway glance would help.',
+      'Blink, breathe, look beyond the screen.',
+      'Your focus earned a small break.',
+      'Let the screen wait a few seconds.',
+      'Unfocus gently, then return.',
+      'A calm eye break is enough.',
+      'Look up when you can.'
     ],
     stretch: [
-      'Uncurl your shoulders and take a slow breath.',
-      'A short stretch might make the next hour feel easier.',
-      'Stand up if you can. Your back will appreciate the vote.'
+      'Uncurl your shoulders.',
+      'A small stretch would be kind.',
+      'Stand and loosen up if you can.',
+      'Roll your neck gently.',
+      'Let your posture reset.',
+      'A quick stretch, no production.',
+      'Move a little before you continue.',
+      'Shake out the desk tension.',
+      'Breathe into a longer spine.',
+      'Give your body a vote.'
     ],
     motivation: [
-      'You are allowed to move steadily, not perfectly.',
-      'Small progress still counts. Keep the thread warm.',
-      'One careful next step is enough.'
+      'One careful step is enough.',
+      'You are allowed to go steadily.',
+      'Small progress still counts.',
+      'Keep the next move simple.',
+      'You are doing the work.',
+      'No rush. Stay with it.',
+      'Begin again, softly.',
+      'You can make this lighter.',
+      'Protect your attention.',
+      'The next minute can be clean.'
     ]
   },
   strict: {
@@ -29,24 +57,52 @@ const messageBank = {
     accent: '#93a7ff',
     mark: 'SC',
     water: [
-      'Hydration check. Take the sip.',
-      'Water now. Make it quick and clean.',
-      'You set the standard. Refill the glass.'
+      'Water. Then back to work.',
+      'Hydrate now.',
+      'Take the sip.',
+      'Refill if it is empty.',
+      'Water check. Keep it simple.',
+      'Do the small maintenance.',
+      'Sip. Reset. Continue.',
+      'Do not skip the basics.',
+      'A quick drink. Move.',
+      'Stay sharp. Drink water.'
     ],
     eyeBreak: [
-      'Eyes off the screen. Twenty seconds.',
-      'Reset your vision. No debate.',
-      'Look away and breathe. Then resume.'
+      'Eyes off screen.',
+      'Look away for a moment.',
+      'Reset your gaze.',
+      'Blink and look far.',
+      'Screen pause. Now.',
+      'Give your eyes a break.',
+      'Twenty seconds. Clean reset.',
+      'Look up. Return focused.',
+      'Protect the focus system.',
+      'Stop staring. Reset.'
     ],
     stretch: [
-      'Posture audit. Stand and stretch.',
-      'Shoulders back. Neck loose. Move.',
-      'A disciplined body supports disciplined work.'
+      'Stand. Stretch. Continue.',
+      'Shoulders back.',
+      'Posture check.',
+      'Move before you stiffen.',
+      'Neck loose. Jaw loose.',
+      'Reset the frame.',
+      'A quick stretch is due.',
+      'Get out of the chair briefly.',
+      'Body maintenance. Now.',
+      'Make the next hour easier.'
     ],
     motivation: [
-      'Do the next right task. Momentum follows.',
-      'Keep standards high and scope realistic.',
-      'Focus is trained. Train it now.'
+      'Pick the next task.',
+      'Standards high. Scope clear.',
+      'Do the useful thing.',
+      'Momentum follows action.',
+      'Start with one minute.',
+      'Clean focus beats force.',
+      'Decide. Begin.',
+      'Keep promises small.',
+      'No drama. Next step.',
+      'Finish the visible piece.'
     ]
   },
   space: {
@@ -54,24 +110,52 @@ const messageBank = {
     accent: '#8ad7ff',
     mark: 'SB',
     water: [
-      'Hydration levels are drifting. Initiate sip sequence.',
-      'Crew comfort protocol: drink some water.',
-      'Tiny refill mission available.'
+      'Hydration check from orbit.',
+      'Sip sequence ready.',
+      'Crew water break.',
+      'Refill mission available.',
+      'Tiny drink, steady course.',
+      'Water levels could use a boost.',
+      'Take a sip before launch.',
+      'Fuel up gently.',
+      'Crew comfort: water.',
+      'Small sip, smooth flight.'
     ],
     eyeBreak: [
-      'Scan the horizon beyond the viewport.',
-      'Optics need a quick recalibration.',
-      'Look at something distant. Stars optional.'
+      'Scan the horizon.',
+      'Optics rest window.',
+      'Look beyond the viewport.',
+      'Blink cycle recommended.',
+      'Give your eyes some distance.',
+      'Short visual reset.',
+      'Stars optional. Break useful.',
+      'Unhook from the screen.',
+      'Gaze far, then return.',
+      'Mission pause for your eyes.'
     ],
     stretch: [
-      'Gravity check. Stand, stretch, re-enter orbit.',
-      'Crew mobility break recommended.',
-      'Loosen the joints before the next launch window.'
+      'Gravity check. Stretch.',
+      'Crew mobility break.',
+      'Stand and re-enter orbit.',
+      'Loosen up for the next pass.',
+      'Stretch before the next burn.',
+      'Reset your cockpit posture.',
+      'Move the joints a little.',
+      'A quick stretch keeps us flying.',
+      'Unfold, captain.',
+      'Body systems appreciate motion.'
     ],
     motivation: [
-      'Course is steady. Continue the mission.',
-      'One small burn can change the whole trajectory.',
-      'You are still in flight. Keep going.'
+      'Course looks steady.',
+      'One small burn changes the path.',
+      'Keep the mission simple.',
+      'Next waypoint: one task.',
+      'You are still in flight.',
+      'Adjust course, keep going.',
+      'Progress is signal.',
+      'Stay curious. Stay steady.',
+      'The route can be quiet.',
+      'Tiny launch. Real movement.'
     ]
   },
   guardian: {
@@ -79,24 +163,52 @@ const messageBank = {
     accent: '#b091ff',
     mark: 'DG',
     water: [
-      'The vessel requires water. Restore it.',
-      'A quiet command: drink.',
-      'Guard your energy. Hydrate.'
+      'Guard your energy. Drink.',
+      'Water, quietly.',
+      'Restore the basics.',
+      'A sip strengthens the watch.',
+      'Drink before you continue.',
+      'Small care. Strong return.',
+      'The glass is waiting.',
+      'Hydrate and hold steady.',
+      'Tend the vessel.',
+      'A calm sip now.'
     ],
     eyeBreak: [
-      'Withdraw your gaze from the glow.',
-      'Rest your eyes before the dark pushes back.',
-      'Look away. Hold the line.'
+      'Rest your gaze.',
+      'Look away from the glow.',
+      'Give your eyes shadow.',
+      'A quiet visual reset.',
+      'Blink and look far.',
+      'Withdraw for a breath.',
+      'Screen down. Eyes up.',
+      'Let the light release you.',
+      'Protect the watch.',
+      'Return with clearer sight.'
     ],
     stretch: [
-      'Rise. Reset the frame.',
-      'Unbind the shoulders. Continue stronger.',
-      'The body is part of the watch.'
+      'Rise and reset.',
+      'Unbind the shoulders.',
+      'Loosen the frame.',
+      'A short stretch. No noise.',
+      'Stand if you can.',
+      'The body keeps the watch too.',
+      'Release the desk tension.',
+      'Move with intention.',
+      'Straighten. Breathe.',
+      'Reset before the next push.'
     ],
     motivation: [
-      'You do not need noise. You need the next move.',
-      'Stay deliberate. Stay difficult to shake.',
-      'Quiet persistence wins more than spectacle.'
+      'Quiet persistence wins.',
+      'Make the next move.',
+      'Stay difficult to shake.',
+      'Focus without noise.',
+      'One task. Held well.',
+      'Steady is strong.',
+      'Begin again in silence.',
+      'Keep your attention guarded.',
+      'The work can be simple.',
+      'Continue with care.'
     ]
   },
   gremlin: {
@@ -104,24 +216,52 @@ const messageBank = {
     accent: '#9ee493',
     mark: 'FG',
     water: [
-      'Drink water before your brain files a complaint.',
-      'Sip time. The tiny office chaos committee insists.',
-      'Your glass is doing dramatic empty-glass theater.'
+      'Sip before your brain protests.',
+      'Water time. Very official.',
+      'The glass has a tiny job.',
+      'Drink water, look composed.',
+      'Hydration arc begins now.',
+      'Sip. Pretend it was planned.',
+      'Refill quest unlocked.',
+      'Your water is being patient.',
+      'Tiny drink, big dignity.',
+      'Do the sip thing.'
     ],
     eyeBreak: [
-      'Unstick your eyeballs from the glowing rectangle.',
-      'Look away. Blink like you remembered being human.',
-      'Give the peepers a tiny vacation.'
+      'Unstick from the glow box.',
+      'Blink like you mean it.',
+      'Look away. Very mysterious.',
+      'Give the eyes a snack break.',
+      'Screen can wait. Dramatically.',
+      'Peepers need a pause.',
+      'Look at a far thing.',
+      'Blink audit: overdue.',
+      'Tiny eye vacation.',
+      'Stop laser-staring for a sec.'
     ],
     stretch: [
-      'Stretch before your chair claims you permanently.',
-      'Do a shoulder wiggle. Dignity optional.',
-      'Stand up and convince your spine you still care.'
+      'Unfold from chair mode.',
+      'Shoulder wiggle. Quietly heroic.',
+      'Stretch before becoming furniture.',
+      'Stand up. Surprise the chair.',
+      'Neck roll, no fanfare.',
+      'Tiny stretch, huge lore.',
+      'Shake out the desk crunch.',
+      'Posture plot twist.',
+      'Move a little, win a little.',
+      'Do a dignified wiggle.'
     ],
     motivation: [
-      'You are weirdly capable. Continue.',
-      'Do the next small thing and pretend it was the plan.',
-      'Progress has entered the chat.'
+      'You are weirdly capable.',
+      'Do the next small thing.',
+      'Progress has entered the chat.',
+      'Tiny win available nearby.',
+      'Begin badly. Improve quickly.',
+      'One tab, one task.',
+      'You can absolutely salvage this minute.',
+      'Make it slightly less messy.',
+      'The plan is: start.',
+      'Small effort, suspiciously useful.'
     ]
   }
 };

@@ -711,6 +711,42 @@ function resetPip() {
   showPanel();
 }
 
+function applyOnboardingPayload(payload = {}, options = {}) {
+  const personality = messageBank[payload.personality]
+    ? payload.personality
+    : (options.complete ? 'cozy' : (messageBank[state.personality] ? state.personality : 'cozy'));
+  state.companionName = String(payload.companionName || state.companionName || 'Pip').trim().slice(0, 28) || 'Pip';
+  state.personality = personality;
+
+  if (typeof payload.privateMode === 'boolean') {
+    state.privateMode = payload.privateMode;
+  }
+
+  if (payload.nudges && typeof payload.nudges === 'object') {
+    for (const key of NUDGE_KEYS) {
+      const incoming = payload.nudges[key];
+      if (!incoming) {
+        continue;
+      }
+      if (typeof incoming.enabled === 'boolean') {
+        state.nudges[key].enabled = incoming.enabled;
+      }
+      if (incoming.frequencyMinutes !== undefined) {
+        state.nudges[key].frequencyMinutes = Math.min(480, Math.max(5, Number(incoming.frequencyMinutes) || defaultState.nudges[key].frequencyMinutes));
+      }
+    }
+  }
+
+  if (options.complete) {
+    state.onboardingComplete = true;
+    const now = new Date().toISOString();
+    for (const key of NUDGE_KEYS) {
+      state.nudges[key].lastFiredAt = now;
+    }
+    lastReminderCheckAt = new Date();
+  }
+}
+
 function registerIpc() {
   ipcMain.handle('app:getState', () => publicState());
   ipcMain.handle('app:togglePanel', () => togglePanel());
@@ -723,33 +759,17 @@ function registerIpc() {
   });
   ipcMain.handle('bubble:setExpanded', (_event, expanded) => resizeBubble(expanded));
 
+  ipcMain.handle('settings:previewOnboarding', (_event, payload = {}) => {
+    if (!state.onboardingComplete) {
+      applyOnboardingPayload(payload);
+      broadcastState();
+      buildTrayMenu();
+    }
+    return publicState();
+  });
+
   ipcMain.handle('settings:completeOnboarding', (_event, payload = {}) => {
-    const personality = messageBank[payload.personality] ? payload.personality : 'cozy';
-    state.companionName = String(payload.companionName || 'Pip').trim().slice(0, 28) || 'Pip';
-    state.personality = personality;
-    if (typeof payload.privateMode === 'boolean') {
-      state.privateMode = payload.privateMode;
-    }
-    if (payload.nudges && typeof payload.nudges === 'object') {
-      for (const key of NUDGE_KEYS) {
-        const incoming = payload.nudges[key];
-        if (!incoming) {
-          continue;
-        }
-        if (typeof incoming.enabled === 'boolean') {
-          state.nudges[key].enabled = incoming.enabled;
-        }
-        if (incoming.frequencyMinutes !== undefined) {
-          state.nudges[key].frequencyMinutes = Math.min(480, Math.max(5, Number(incoming.frequencyMinutes) || defaultState.nudges[key].frequencyMinutes));
-        }
-      }
-    }
-    state.onboardingComplete = true;
-    const now = new Date().toISOString();
-    for (const key of NUDGE_KEYS) {
-      state.nudges[key].lastFiredAt = now;
-    }
-    lastReminderCheckAt = new Date();
+    applyOnboardingPayload(payload, { complete: true });
     saveState();
     return publicState();
   });

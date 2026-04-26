@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('pipAPI', {
   clearNotice: () => ipcRenderer.invoke('app:clearNotice'),
   resetPip: () => ipcRenderer.invoke('app:reset'),
   setBubbleExpanded: (expanded) => ipcRenderer.invoke('bubble:setExpanded', expanded),
+  previewOnboarding: (payload) => ipcRenderer.invoke('settings:previewOnboarding', payload),
   completeOnboarding: (payload) => ipcRenderer.invoke('settings:completeOnboarding', payload),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
   snoozeNudge: (payload) => ipcRenderer.invoke('nudge:snooze', payload),

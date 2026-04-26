@@ -66,6 +66,10 @@ function updateOnboardingDraftFromForm() {
     return;
   }
 
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
   const data = Object.fromEntries(new FormData(form).entries());
   if (data.companionName !== undefined) {
     onboardingDraft.companionName = String(data.companionName).trim().slice(0, 28) || 'Pip';
@@ -84,14 +88,19 @@ function renderAvatar(className, meta, size = '') {
 }
 
 function renderTopbar() {
-  const meta = state.personalityMeta;
+  const meta = !state.onboardingComplete && onboardingDraft
+    ? selectedPersonalityMeta(onboardingDraft.personality || 'cozy')
+    : state.personalityMeta;
+  const companionName = !state.onboardingComplete && onboardingDraft
+    ? onboardingDraft.companionName
+    : state.companionName;
   return `
     <header class="topbar" style="${accentStyle(meta.accent)}">
       <div class="brand">
         ${renderAvatar('avatar', meta)}
         <div class="brand-copy">
           <div class="eyebrow">${escapeHtml(meta.label)}</div>
-          <h1 class="title">${escapeHtml(state.companionName || 'Pip')}</h1>
+          <h1 class="title">${escapeHtml(companionName || 'Pip')}</h1>
         </div>
       </div>
       <div class="top-actions">
@@ -549,13 +558,16 @@ app.addEventListener('click', async (event) => {
   }
 
   if (target.dataset.action === 'onboardingNext') {
+    ensureOnboardingDraft();
     updateOnboardingDraftFromForm();
+    onboardingDraft.personality = onboardingDraft.personality || 'cozy';
     onboardingStep = Math.min(3, onboardingStep + 1);
     render();
     return;
   }
 
   if (target.dataset.action === 'onboardingBack') {
+    ensureOnboardingDraft();
     updateOnboardingDraftFromForm();
     onboardingStep = Math.max(0, onboardingStep - 1);
     render();
@@ -563,7 +575,9 @@ app.addEventListener('click', async (event) => {
   }
 
   if (target.dataset.action === 'finishOnboarding') {
+    ensureOnboardingDraft();
     updateOnboardingDraftFromForm();
+    onboardingDraft.personality = onboardingDraft.personality || 'cozy';
     await refresh(await window.pipAPI.completeOnboarding(onboardingDraft));
     view = 'dashboard';
     return;
@@ -576,7 +590,8 @@ app.addEventListener('click', async (event) => {
   }
 
   if (target.dataset.personality) {
-    const form = target.closest('form');
+    ensureOnboardingDraft();
+    const form = target.closest('[data-onboarding-form], form');
     const personality = target.dataset.personality;
     const hidden = form && form.querySelector('input[name="personality"]');
     if (onboardingDraft && !state.onboardingComplete) {
@@ -587,6 +602,12 @@ app.addEventListener('click', async (event) => {
     }
     state.personality = personality;
     state.personalityMeta = selectedPersonalityMeta(personality);
+    if (window.pipAPI.previewOnboarding && onboardingDraft && !state.onboardingComplete) {
+      await refresh(await window.pipAPI.previewOnboarding({
+        companionName: onboardingDraft.companionName,
+        personality: onboardingDraft.personality || 'cozy'
+      }));
+    }
     render();
     return;
   }
@@ -695,7 +716,9 @@ app.addEventListener('submit', async (event) => {
   const data = formData(form);
 
   if (Object.prototype.hasOwnProperty.call(form.dataset, 'onboardingForm')) {
+    ensureOnboardingDraft();
     updateOnboardingDraftFromForm();
+    onboardingDraft.personality = onboardingDraft.personality || 'cozy';
     if (onboardingStep < 3) {
       onboardingStep += 1;
       render();

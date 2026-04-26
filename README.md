@@ -10,11 +10,16 @@ Pip is currently a public `v0.1.0` beta. Expect a focused, local-first desktop a
 
 ## Screenshots
 
-> Screenshot placeholder: first-time onboarding
+Planned launch screenshots:
 
-> Screenshot placeholder: Today dashboard
+- `marketing/screenshots/01-onboarding-welcome.png`
+- `marketing/screenshots/02-personality-picker.png`
+- `marketing/screenshots/03-today-dashboard.png`
+- `marketing/screenshots/04-reminder-creation.png`
+- `marketing/screenshots/05-private-mode.png`
+- `marketing/screenshots/06-presentation-safe-mode.png`
 
-> Screenshot placeholder: compact companion bubble
+See [marketing/SCREENSHOT_GUIDE.md](./marketing/SCREENSHOT_GUIDE.md) for capture notes.
 
 ## Features
 

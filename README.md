@@ -46,6 +46,8 @@ Pip is local-first:
 
 See [SECURITY_AND_PRIVACY.md](./SECURITY_AND_PRIVACY.md) for more detail.
 
+See [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md) for current beta limitations.
+
 ## Run Locally
 
 ```bash

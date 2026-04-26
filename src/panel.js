@@ -259,7 +259,7 @@ function renderCurrentNudge() {
           <button class="button" data-snooze="${nudge.category}" data-option="15m">15 min</button>
           <button class="button" data-snooze="${nudge.category}" data-option="1h">1 hour</button>
           <button class="button" data-snooze="${nudge.category}" data-option="tomorrow">Tomorrow</button>
-          <button class="button ghost" data-snooze="${nudge.category}" data-option="off">Turn off</button>
+          <button class="button ghost" data-snooze="${nudge.category}" data-option="off">Until turned on</button>
         ` : ''}
         <button class="button ghost" data-action="dismiss">Done</button>
       </div>
@@ -313,7 +313,7 @@ function renderQueue() {
   return `
     <section class="section">
       <div class="section-head">
-        <h2 class="section-title">Missed while safe</h2>
+        <h2 class="section-title">Queued while safe</h2>
         <button class="button ghost" data-action="clearQueue">Clear</button>
       </div>
       <div class="list">

@@ -486,7 +486,7 @@ function sendNativeNotification({ title, body, genericBody = 'You have a private
   let notification;
   try {
     notification = new Notification({
-      title: state.privateMode ? `${state.companionName || 'Pip'} reminder` : title,
+      title: state.privateMode ? 'Pip reminder' : title,
       body: state.privateMode ? genericBody : body,
       silent: false
     });

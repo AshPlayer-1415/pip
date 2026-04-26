@@ -32,6 +32,15 @@ function accentStyle(accent) {
   return `--accent: ${accent}; --accent-soft: ${accent}22;`;
 }
 
+function cloneState(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function defaultReminderTime() {
+  const date = new Date(Date.now() + 5 * 60 * 1000);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
 function renderTopbar() {
   const meta = state.personalityMeta;
   return `
@@ -200,8 +209,7 @@ function renderDashboard() {
 }
 
 function renderAddReminder() {
-  const now = new Date();
-  const time = `${String(now.getHours()).padStart(2, '0')}:${String((now.getMinutes() + 5) % 60).padStart(2, '0')}`;
+  const time = defaultReminderTime();
 
   return `
     ${renderTopbar()}
@@ -395,7 +403,7 @@ app.addEventListener('click', async (event) => {
 
   if (target.dataset.nudgeToggle) {
     const key = target.dataset.nudgeToggle;
-    const next = structuredClone(state.nudges);
+    const next = cloneState(state.nudges);
     next[key].enabled = !(next[key].enabled && next[key].snoozedUntil !== 'off');
     if (next[key].enabled) {
       next[key].snoozedUntil = null;
@@ -432,7 +440,7 @@ app.addEventListener('submit', async (event) => {
   }
 
   if (form.dataset.form === 'settings') {
-    const nudges = structuredClone(state.nudges);
+    const nudges = cloneState(state.nudges);
     for (const key of Object.keys(nudges)) {
       const value = Number(data[`${key}-frequency`]);
       nudges[key].frequencyMinutes = Number.isFinite(value) ? value : nudges[key].frequencyMinutes;

@@ -7,6 +7,7 @@ function clone(value) {
 
 function createStore(app) {
   const filePath = path.join(app.getPath('userData'), 'pip-data.json');
+  const tempPath = `${filePath}.tmp`;
 
   function read(defaultState) {
     try {
@@ -15,10 +16,8 @@ function createStore(app) {
       }
 
       const raw = fs.readFileSync(filePath, 'utf8');
-      return {
-        ...structuredClone(defaultState),
-        ...JSON.parse(raw)
-      };
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : clone(defaultState);
     } catch (error) {
       console.error('Unable to read Pip store:', error);
       return clone(defaultState);
@@ -28,9 +27,17 @@ function createStore(app) {
   function write(state) {
     try {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, JSON.stringify(state, null, 2));
+      fs.writeFileSync(tempPath, JSON.stringify(state, null, 2));
+      fs.renameSync(tempPath, filePath);
     } catch (error) {
       console.error('Unable to write Pip store:', error);
+      try {
+        if (fs.existsSync(tempPath)) {
+          fs.unlinkSync(tempPath);
+        }
+      } catch (cleanupError) {
+        console.error('Unable to clean Pip temp store:', cleanupError);
+      }
     }
   }
 

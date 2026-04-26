@@ -42,6 +42,7 @@ let bubbleWindow;
 let panelWindow;
 let scheduler;
 let bubbleExpanded = false;
+let lastReminderCheckAt;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -69,6 +70,82 @@ function saveState() {
   store.write(state);
   broadcastState();
   buildTrayMenu();
+}
+
+function localDateKey(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
+function parseReminderTime(time) {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(time || ''));
+  if (!match) {
+    return null;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) {
+    return null;
+  }
+
+  return { hours, minutes };
+}
+
+function scheduledDateForToday(time, now = new Date()) {
+  const parsed = parseReminderTime(time);
+  if (!parsed) {
+    return null;
+  }
+
+  const scheduled = new Date(now);
+  scheduled.setHours(parsed.hours, parsed.minutes, 0, 0);
+  return scheduled;
+}
+
+function normalizeState(nextState) {
+  const normalized = deepMerge(defaultState, nextState || {});
+
+  normalized.companionName = String(normalized.companionName || 'Pip').trim().slice(0, 28) || 'Pip';
+  if (!messageBank[normalized.personality]) {
+    normalized.personality = 'cozy';
+  }
+
+  for (const key of NUDGE_KEYS) {
+    const config = normalized.nudges[key];
+    config.enabled = Boolean(config.enabled);
+    config.frequencyMinutes = Math.min(480, Math.max(5, Number(config.frequencyMinutes) || defaultState.nudges[key].frequencyMinutes));
+
+    if (config.snoozedUntil && config.snoozedUntil !== 'off') {
+      const snoozedUntil = new Date(config.snoozedUntil).getTime();
+      if (!Number.isFinite(snoozedUntil)) {
+        config.snoozedUntil = null;
+      }
+    }
+
+    if (config.lastFiredAt && !Number.isFinite(new Date(config.lastFiredAt).getTime())) {
+      config.lastFiredAt = null;
+    }
+  }
+
+  normalized.reminders = normalized.reminders
+    .filter((reminder) => reminder && String(reminder.title || '').trim() && parseReminderTime(reminder.time))
+    .map((reminder) => ({
+      id: reminder.id || randomUUID(),
+      title: String(reminder.title).trim().slice(0, 80),
+      time: reminder.time,
+      type: ['pills', 'birthday', 'task', 'custom'].includes(reminder.type) ? reminder.type : 'custom',
+      enabled: reminder.enabled !== false,
+      createdAt: reminder.createdAt || new Date().toISOString(),
+      lastDeliveredDate: reminder.lastDeliveredDate || null
+    }));
+
+  normalized.missedQueue = Array.isArray(normalized.missedQueue) ? normalized.missedQueue.slice(0, 30) : [];
+  normalized.currentNudge = null;
+  return normalized;
 }
 
 function publicState() {
@@ -266,6 +343,25 @@ function isSnoozed(config, now = Date.now()) {
   return new Date(config.snoozedUntil).getTime() > now;
 }
 
+function consumeExpiredSnooze(config, now = Date.now()) {
+  if (!config.snoozedUntil || config.snoozedUntil === 'off') {
+    return false;
+  }
+
+  const snoozedUntil = new Date(config.snoozedUntil).getTime();
+  if (!Number.isFinite(snoozedUntil)) {
+    config.snoozedUntil = null;
+    return false;
+  }
+
+  if (snoozedUntil <= now) {
+    config.snoozedUntil = null;
+    return true;
+  }
+
+  return false;
+}
+
 function markNudgeFired(category) {
   state.nudges[category].lastFiredAt = new Date().toISOString();
 }
@@ -361,6 +457,7 @@ function checkNudges() {
 
   for (const category of NUDGE_KEYS) {
     const config = state.nudges[category];
+    const snoozeExpired = consumeExpiredSnooze(config, now);
     if (!config.enabled || isSnoozed(config, now)) {
       continue;
     }
@@ -368,25 +465,28 @@ function checkNudges() {
     const last = config.lastFiredAt ? new Date(config.lastFiredAt).getTime() : 0;
     const frequencyMs = Math.max(5, Number(config.frequencyMinutes) || 30) * 60 * 1000;
 
-    if (!last || now - last >= frequencyMs) {
+    if (snoozeExpired || !last || now - last >= frequencyMs) {
       showNudge(category);
       break;
     }
   }
 }
 
-function todayKey(date = new Date()) {
-  return date.toISOString().slice(0, 10);
-}
-
 function checkReminders() {
   const now = new Date();
-  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const today = todayKey(now);
+  const previousCheck = lastReminderCheckAt || new Date(now.getTime() - CHECK_INTERVAL_MS);
+  const today = localDateKey(now);
   let changed = false;
 
   for (const reminder of state.reminders) {
-    if (!reminder.enabled || reminder.time !== currentTime || reminder.lastDeliveredDate === today) {
+    const scheduledAt = scheduledDateForToday(reminder.time, now);
+    if (
+      !reminder.enabled ||
+      !scheduledAt ||
+      scheduledAt <= previousCheck ||
+      scheduledAt > now ||
+      reminder.lastDeliveredDate === today
+    ) {
       continue;
     }
 
@@ -398,9 +498,15 @@ function checkReminders() {
   if (changed) {
     saveState();
   }
+  lastReminderCheckAt = now;
 }
 
 function runScheduler() {
+  if (!state.onboardingComplete) {
+    lastReminderCheckAt = new Date();
+    return;
+  }
+
   checkReminders();
   checkNudges();
 }
@@ -413,6 +519,9 @@ function scheduleChecks() {
 
 function setPresentationSafeMode(enabled) {
   state.presentationSafeMode = Boolean(enabled);
+  if (state.presentationSafeMode) {
+    state.currentNudge = null;
+  }
   saveState();
 
   if (enabled) {
@@ -450,7 +559,7 @@ function snoozeCategory(category, option) {
 function sanitizeReminder(input) {
   const title = String(input.title || '').trim().slice(0, 80);
   const type = ['pills', 'birthday', 'task', 'custom'].includes(input.type) ? input.type : 'custom';
-  const time = /^\d{2}:\d{2}$/.test(input.time || '') ? input.time : null;
+  const time = parseReminderTime(input.time) ? input.time : null;
 
   if (!title || !time) {
     return null;
@@ -474,16 +583,21 @@ function registerIpc() {
   ipcMain.handle('app:closePanel', () => panelWindow && panelWindow.hide());
   ipcMain.handle('bubble:setExpanded', (_event, expanded) => resizeBubble(expanded));
 
-  ipcMain.handle('settings:completeOnboarding', (_event, payload) => {
+  ipcMain.handle('settings:completeOnboarding', (_event, payload = {}) => {
     const personality = messageBank[payload.personality] ? payload.personality : 'cozy';
     state.companionName = String(payload.companionName || 'Pip').trim().slice(0, 28) || 'Pip';
     state.personality = personality;
     state.onboardingComplete = true;
+    const now = new Date().toISOString();
+    for (const key of NUDGE_KEYS) {
+      state.nudges[key].lastFiredAt = now;
+    }
+    lastReminderCheckAt = new Date();
     saveState();
     return publicState();
   });
 
-  ipcMain.handle('settings:update', (_event, patch) => {
+  ipcMain.handle('settings:update', (_event, patch = {}) => {
     if (typeof patch.companionName === 'string') {
       state.companionName = patch.companionName.trim().slice(0, 28) || 'Pip';
     }
@@ -495,21 +609,42 @@ function registerIpc() {
     }
     if (typeof patch.presentationSafeMode === 'boolean') {
       state.presentationSafeMode = patch.presentationSafeMode;
+      if (state.presentationSafeMode) {
+        state.currentNudge = null;
+      }
     }
 
     if (patch.nudges && typeof patch.nudges === 'object') {
       for (const key of NUDGE_KEYS) {
-        if (!patch.nudges[key]) {
+        const incoming = patch.nudges[key];
+        if (!incoming) {
           continue;
         }
-        if (typeof patch.nudges[key].enabled === 'boolean') {
-          state.nudges[key].enabled = patch.nudges[key].enabled;
-          if (patch.nudges[key].enabled && state.nudges[key].snoozedUntil === 'off') {
-            state.nudges[key].snoozedUntil = null;
+
+        const wasActive = state.nudges[key].enabled && state.nudges[key].snoozedUntil !== 'off';
+
+        if (Object.prototype.hasOwnProperty.call(incoming, 'snoozedUntil')) {
+          if (incoming.snoozedUntil === 'off' || incoming.snoozedUntil === null) {
+            state.nudges[key].snoozedUntil = incoming.snoozedUntil;
+          } else if (Number.isFinite(new Date(incoming.snoozedUntil).getTime())) {
+            state.nudges[key].snoozedUntil = incoming.snoozedUntil;
           }
         }
-        if (patch.nudges[key].frequencyMinutes !== undefined) {
-          state.nudges[key].frequencyMinutes = Math.min(480, Math.max(5, Number(patch.nudges[key].frequencyMinutes) || 30));
+
+        if (typeof incoming.enabled === 'boolean') {
+          state.nudges[key].enabled = incoming.enabled;
+          if (!incoming.enabled && state.currentNudge && state.currentNudge.category === key) {
+            state.currentNudge = null;
+          }
+        }
+
+        const isActive = state.nudges[key].enabled && state.nudges[key].snoozedUntil !== 'off';
+        if (isActive && !wasActive) {
+          state.nudges[key].lastFiredAt = new Date().toISOString();
+        }
+
+        if (incoming.frequencyMinutes !== undefined) {
+          state.nudges[key].frequencyMinutes = Math.min(480, Math.max(5, Number(incoming.frequencyMinutes) || 30));
         }
       }
     }
@@ -518,7 +653,7 @@ function registerIpc() {
     return publicState();
   });
 
-  ipcMain.handle('nudge:snooze', (_event, payload) => {
+  ipcMain.handle('nudge:snooze', (_event, payload = {}) => {
     snoozeCategory(payload.category, payload.option);
     return publicState();
   });
@@ -535,7 +670,7 @@ function registerIpc() {
     return publicState();
   });
 
-  ipcMain.handle('reminders:add', (_event, payload) => {
+  ipcMain.handle('reminders:add', (_event, payload = {}) => {
     const reminder = sanitizeReminder(payload);
     if (reminder) {
       state.reminders.unshift(reminder);
@@ -550,7 +685,7 @@ function registerIpc() {
     return publicState();
   });
 
-  ipcMain.handle('reminders:toggle', (_event, { id, enabled }) => {
+  ipcMain.handle('reminders:toggle', (_event, { id, enabled } = {}) => {
     const reminder = state.reminders.find((item) => item.id === id);
     if (reminder) {
       reminder.enabled = Boolean(enabled);
@@ -566,7 +701,8 @@ app.whenReady().then(() => {
   }
 
   store = createStore(app);
-  state = deepMerge(defaultState, store.read(defaultState));
+  state = normalizeState(store.read(defaultState));
+  lastReminderCheckAt = new Date();
 
   tray = new Tray(createTrayImage());
   tray.on('click', togglePanel);

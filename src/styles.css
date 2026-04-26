@@ -33,6 +33,11 @@ body {
   user-select: none;
 }
 
+input,
+select {
+  user-select: text;
+}
+
 button,
 input,
 select {
@@ -299,7 +304,8 @@ button {
   gap: 6px;
 }
 
-.field label {
+.field label,
+.field > span {
   color: var(--muted);
   font-size: 12px;
 }

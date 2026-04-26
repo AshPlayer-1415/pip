@@ -4,6 +4,7 @@ let state;
 let view = 'dashboard';
 let onboardingStep = 0;
 let onboardingDraft;
+let resetConfirming = false;
 
 const typeLabels = {
   pills: 'Pills',
@@ -98,6 +99,19 @@ function renderTopbar() {
         <button class="icon-button" data-action="close" title="Close">x</button>
       </div>
     </header>
+  `;
+}
+
+function renderNotice() {
+  if (!state.notice) {
+    return '';
+  }
+
+  return `
+    <section class="notice notice-${escapeHtml(state.notice.tone || 'info')}">
+      <span>${escapeHtml(state.notice.message)}</span>
+      <button class="icon-button notice-close" data-action="clearNotice" title="Dismiss">x</button>
+    </section>
   `;
 }
 
@@ -216,6 +230,7 @@ function renderOnboarding() {
         <div class="step-dots" aria-hidden="true">
           ${steps.map((_step, index) => `<span class="${index === onboardingStep ? 'is-active' : ''}"></span>`).join('')}
         </div>
+        ${renderNotice()}
         ${steps[onboardingStep]}
       </div>
     </section>
@@ -345,6 +360,7 @@ function renderDashboard() {
     ${renderTopbar()}
     <section class="content">
       <div class="stack">
+        ${renderNotice()}
         ${renderTodayDashboard()}
         ${renderCurrentNudge()}
         <div class="quick-actions">
@@ -371,6 +387,7 @@ function renderAddReminder() {
     ${renderTopbar()}
     <section class="content">
       <div class="stack">
+        ${renderNotice()}
         <div class="section-head">
           <h2 class="section-title">Add Reminder</h2>
           <button class="button ghost" data-view="dashboard">Back</button>
@@ -406,6 +423,7 @@ function renderSettings() {
     ${renderTopbar()}
     <section class="content">
       <div class="stack">
+        ${renderNotice()}
         <div class="section-head">
           <h2 class="section-title">Settings</h2>
           <button class="button ghost" data-view="dashboard">Back</button>
@@ -451,6 +469,28 @@ function renderSettings() {
               <button class="toggle ${state.privateMode ? 'is-on' : ''}" data-setting-toggle="privateMode" type="button"></button>
             </div>
           </div>
+
+          <section class="card form">
+            <div>
+              <h3 class="card-title">About Pip</h3>
+              <p class="empty-copy">${escapeHtml(state.appInfo.name)} ${escapeHtml(state.appInfo.version)}</p>
+              <p class="empty-copy">${escapeHtml(state.appInfo.description)}</p>
+              <p class="empty-copy">${escapeHtml(state.appInfo.privacy)}</p>
+            </div>
+          </section>
+
+          <section class="card form danger-zone">
+            <div>
+              <h3 class="card-title">Reset Pip</h3>
+              <p class="empty-copy">Clears local settings and reminders, then returns to onboarding.</p>
+            </div>
+            ${resetConfirming ? `
+              <div class="button-row">
+                <button class="button danger" data-action="confirmReset" type="button">Reset Pip</button>
+                <button class="button ghost" data-action="cancelReset" type="button">Cancel</button>
+              </div>
+            ` : '<button class="button danger" data-action="beginReset" type="button">Reset Pip</button>'}
+          </section>
 
           <button class="button primary" type="submit">Save Settings</button>
         </form>
@@ -503,6 +543,11 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (target.dataset.action === 'clearNotice') {
+    await refresh(await window.pipAPI.clearNotice());
+    return;
+  }
+
   if (target.dataset.action === 'onboardingNext') {
     updateOnboardingDraftFromForm();
     onboardingStep = Math.min(3, onboardingStep + 1);
@@ -548,6 +593,27 @@ app.addEventListener('click', async (event) => {
 
   if (target.dataset.action === 'toggleSafe') {
     await refresh(await window.pipAPI.updateSettings({ presentationSafeMode: !state.presentationSafeMode }));
+    return;
+  }
+
+  if (target.dataset.action === 'beginReset') {
+    resetConfirming = true;
+    render();
+    return;
+  }
+
+  if (target.dataset.action === 'cancelReset') {
+    resetConfirming = false;
+    render();
+    return;
+  }
+
+  if (target.dataset.action === 'confirmReset') {
+    resetConfirming = false;
+    onboardingDraft = null;
+    onboardingStep = 0;
+    view = 'dashboard';
+    await refresh(await window.pipAPI.resetPip());
     return;
   }
 
@@ -641,9 +707,12 @@ app.addEventListener('submit', async (event) => {
   }
 
   if (form.dataset.form === 'reminder') {
-    await refresh(await window.pipAPI.addReminder(data));
-    view = 'dashboard';
-    render();
+    const result = await window.pipAPI.addReminder(data);
+    await refresh(result.state || result);
+    if (result.ok !== false) {
+      view = 'dashboard';
+      render();
+    }
     return;
   }
 

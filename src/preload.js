@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('pipAPI', {
   togglePanel: () => ipcRenderer.invoke('app:togglePanel'),
   showPanel: () => ipcRenderer.invoke('app:showPanel'),
   closePanel: () => ipcRenderer.invoke('app:closePanel'),
+  clearNotice: () => ipcRenderer.invoke('app:clearNotice'),
+  resetPip: () => ipcRenderer.invoke('app:reset'),
   setBubbleExpanded: (expanded) => ipcRenderer.invoke('bubble:setExpanded', expanded),
   completeOnboarding: (payload) => ipcRenderer.invoke('settings:completeOnboarding', payload),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),

@@ -12,6 +12,7 @@ const {
 } = require('electron');
 const { createStore } = require('./storage');
 const { messageBank, nudgeLabels, pickMessage } = require('./messages');
+const packageJson = require('../package.json');
 
 const NUDGE_KEYS = ['water', 'eyeBreak', 'stretch', 'motivation'];
 const BUBBLE_SIZE = { collapsed: [86, 86], expanded: [300, 118] };
@@ -43,6 +44,7 @@ let panelWindow;
 let scheduler;
 let bubbleExpanded = false;
 let lastReminderCheckAt;
+let appNotice = null;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -66,8 +68,23 @@ function deepMerge(defaultValue, storedValue) {
   return storedValue === undefined ? defaultValue : storedValue;
 }
 
+function setNotice(message, tone = 'info') {
+  appNotice = {
+    id: randomUUID(),
+    message,
+    tone,
+    createdAt: new Date().toISOString()
+  };
+}
+
+function clearNotice() {
+  appNotice = null;
+}
+
 function saveState() {
-  store.write(state);
+  if (!store.write(state)) {
+    setNotice(store.getLastError() || 'Pip could not save changes locally.', 'error');
+  }
   broadcastState();
   buildTrayMenu();
 }
@@ -235,6 +252,13 @@ function publicState() {
       mark: meta.mark
     })),
     nudgeLabels,
+    appInfo: {
+      name: 'Pip',
+      version: packageJson.version,
+      description: 'A gentle local-first desktop companion for reminders, breaks, and motivation.',
+      privacy: 'Local-first. No account. No cloud sync.'
+    },
+    notice: appNotice,
     today: {
       mode: getModeSummary(),
       nextReminder: getNextReminder(),
@@ -454,14 +478,24 @@ function enqueueMissed(item) {
 
 function sendNativeNotification({ title, body, genericBody = 'You have a private reminder.', onClick }) {
   if (!Notification.isSupported()) {
+    setNotice('Notifications are unavailable on this Mac right now.', 'warning');
+    broadcastState();
     return;
   }
 
-  const notification = new Notification({
-    title: state.privateMode ? `${state.companionName || 'Pip'} reminder` : title,
-    body: state.privateMode ? genericBody : body,
-    silent: false
-  });
+  let notification;
+  try {
+    notification = new Notification({
+      title: state.privateMode ? `${state.companionName || 'Pip'} reminder` : title,
+      body: state.privateMode ? genericBody : body,
+      silent: false
+    });
+  } catch (error) {
+    console.error('Unable to create notification:', error);
+    setNotice('Pip could not create a notification.', 'warning');
+    broadcastState();
+    return;
+  }
 
   notification.on('click', () => {
     if (onClick) {
@@ -471,7 +505,13 @@ function sendNativeNotification({ title, body, genericBody = 'You have a private
     }
   });
 
-  notification.show();
+  try {
+    notification.show();
+  } catch (error) {
+    console.error('Unable to show notification:', error);
+    setNotice('Pip could not show a notification. Check macOS notification settings.', 'warning');
+    broadcastState();
+  }
 }
 
 function showNudge(category, options = {}) {
@@ -662,11 +702,25 @@ function sanitizeReminder(input) {
   };
 }
 
+function resetPip() {
+  state = normalizeState(defaultState);
+  lastReminderCheckAt = new Date();
+  clearNotice();
+  saveState();
+  resizeBubble(false);
+  showPanel();
+}
+
 function registerIpc() {
   ipcMain.handle('app:getState', () => publicState());
   ipcMain.handle('app:togglePanel', () => togglePanel());
   ipcMain.handle('app:showPanel', () => showPanel());
   ipcMain.handle('app:closePanel', () => panelWindow && panelWindow.hide());
+  ipcMain.handle('app:clearNotice', () => {
+    clearNotice();
+    broadcastState();
+    return publicState();
+  });
   ipcMain.handle('bubble:setExpanded', (_event, expanded) => resizeBubble(expanded));
 
   ipcMain.handle('settings:completeOnboarding', (_event, payload = {}) => {
@@ -780,11 +834,18 @@ function registerIpc() {
 
   ipcMain.handle('reminders:add', (_event, payload = {}) => {
     const reminder = sanitizeReminder(payload);
-    if (reminder) {
-      state.reminders.unshift(reminder);
-      saveState();
+    if (!reminder) {
+      setNotice('Add a title and valid time before saving the reminder.', 'error');
+      return {
+        ok: false,
+        error: 'Add a title and valid time before saving the reminder.',
+        state: publicState()
+      };
     }
-    return publicState();
+
+    state.reminders.unshift(reminder);
+    saveState();
+    return { ok: true, state: publicState() };
   });
 
   ipcMain.handle('reminders:delete', (_event, id) => {
@@ -801,6 +862,11 @@ function registerIpc() {
     }
     return publicState();
   });
+
+  ipcMain.handle('app:reset', () => {
+    resetPip();
+    return publicState();
+  });
 }
 
 app.whenReady().then(() => {
@@ -810,6 +876,9 @@ app.whenReady().then(() => {
 
   store = createStore(app);
   state = normalizeState(store.read(defaultState));
+  if (store.getLastError()) {
+    setNotice(store.getLastError(), 'error');
+  }
   lastReminderCheckAt = new Date();
 
   tray = new Tray(createTrayImage());

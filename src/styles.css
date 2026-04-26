@@ -238,6 +238,47 @@ button {
   padding: 14px;
 }
 
+.card-title {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.notice {
+  min-height: 42px;
+  border-radius: 8px;
+  padding: 8px 8px 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  line-height: 1.35;
+}
+
+.notice-error {
+  border-color: rgba(255, 142, 142, 0.35);
+  background: rgba(255, 142, 142, 0.11);
+}
+
+.notice-warning {
+  border-color: rgba(215, 185, 142, 0.36);
+  background: rgba(215, 185, 142, 0.12);
+}
+
+.notice-close {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+}
+
+.danger-zone {
+  border-color: rgba(255, 142, 142, 0.22);
+}
+
 .hero-card {
   display: grid;
   gap: 12px;

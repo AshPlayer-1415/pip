@@ -3,13 +3,29 @@ const bubbleMark = document.getElementById('bubbleMark');
 const bubbleCallout = document.getElementById('bubbleCallout');
 
 let activeId = null;
-let collapseTimer;
+let dragStart = null;
+let didDrag = false;
+
+function renderBubbleAvatar(state) {
+  const meta = state.personalityMeta;
+  bubbleMark.className = `bubble-mark personality-${meta.id || 'cozy'}`;
+  bubbleMark.textContent = '';
+  bubbleMark.style.backgroundImage = '';
+
+  if (state.appearance && state.appearance.avatarMode === 'custom' && state.appearance.customAvatarUrl) {
+    bubbleMark.classList.add('has-image');
+    bubbleMark.style.backgroundImage = `url("${state.appearance.customAvatarUrl}")`;
+    return;
+  }
+
+  bubbleMark.classList.remove('has-image');
+  bubbleMark.textContent = meta.mark || 'P';
+}
 
 function applyState(state) {
   const meta = state.personalityMeta;
   document.documentElement.style.cssText = `--accent: ${meta.accent}; --accent-soft: ${meta.accent}22;`;
-  bubbleMark.className = `bubble-mark personality-${meta.id || 'cozy'}`;
-  bubbleMark.textContent = meta.mark || 'P';
+  renderBubbleAvatar(state);
 
   const hasPopup = Boolean(state.currentNudge && !state.presentationSafeMode);
   bubble.classList.toggle('is-active', hasPopup);
@@ -17,26 +33,83 @@ function applyState(state) {
   if (hasPopup && state.currentNudge.id !== activeId) {
     activeId = state.currentNudge.id;
     bubbleCallout.textContent = state.privateMode ? 'Private reminder' : state.currentNudge.message;
-    bubble.classList.add('is-expanded');
-    window.pipAPI.setBubbleExpanded(true);
-    clearTimeout(collapseTimer);
-    collapseTimer = setTimeout(() => {
-      bubble.classList.remove('is-expanded');
-      window.pipAPI.setBubbleExpanded(false);
-    }, 8000);
     return;
   }
 
   if (!hasPopup) {
     activeId = null;
-    bubble.classList.remove('is-expanded');
     bubbleCallout.textContent = '';
-    clearTimeout(collapseTimer);
     window.pipAPI.setBubbleExpanded(false);
   }
 }
 
-bubble.addEventListener('click', () => {
+bubble.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) {
+    return;
+  }
+  didDrag = false;
+  dragStart = {
+    pointerId: event.pointerId,
+    screenX: event.screenX,
+    screenY: event.screenY,
+    windowX: window.screenX,
+    windowY: window.screenY
+  };
+  bubble.setPointerCapture(event.pointerId);
+});
+
+bubble.addEventListener('pointermove', (event) => {
+  if (!dragStart || event.pointerId !== dragStart.pointerId) {
+    return;
+  }
+
+  const dx = event.screenX - dragStart.screenX;
+  const dy = event.screenY - dragStart.screenY;
+  if (Math.abs(dx) + Math.abs(dy) < 4) {
+    return;
+  }
+
+  didDrag = true;
+  window.pipAPI.setBubblePosition({
+    position: {
+      x: dragStart.windowX + dx,
+      y: dragStart.windowY + dy
+    },
+    persist: false
+  });
+});
+
+bubble.addEventListener('pointerup', (event) => {
+  if (!dragStart || event.pointerId !== dragStart.pointerId) {
+    return;
+  }
+
+  const dx = event.screenX - dragStart.screenX;
+  const dy = event.screenY - dragStart.screenY;
+  const shouldPersist = didDrag;
+  const position = {
+    x: dragStart.windowX + dx,
+    y: dragStart.windowY + dy
+  };
+  dragStart = null;
+  bubble.releasePointerCapture(event.pointerId);
+
+  if (shouldPersist) {
+    window.pipAPI.setBubblePosition({ position, persist: true });
+  }
+});
+
+bubble.addEventListener('pointercancel', () => {
+  dragStart = null;
+});
+
+bubble.addEventListener('click', (event) => {
+  if (didDrag) {
+    event.preventDefault();
+    didDrag = false;
+    return;
+  }
+
   window.pipAPI.togglePanel();
 });
 

@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('pipAPI', {
   clearNotice: () => ipcRenderer.invoke('app:clearNotice'),
   resetPip: () => ipcRenderer.invoke('app:reset'),
   setBubbleExpanded: (expanded) => ipcRenderer.invoke('bubble:setExpanded', expanded),
+  setBubblePosition: (payload) => ipcRenderer.invoke('bubble:setPosition', payload),
+  chooseCustomAvatar: () => ipcRenderer.invoke('avatar:chooseCustom'),
   previewOnboarding: (payload) => ipcRenderer.invoke('settings:previewOnboarding', payload),
   completeOnboarding: (payload) => ipcRenderer.invoke('settings:completeOnboarding', payload),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),

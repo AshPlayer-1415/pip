@@ -14,11 +14,17 @@ const typeLabels = {
 };
 
 const personalityNotes = {
-  cozy: 'Warm, calm, low-pressure nudges.',
-  strict: 'Direct prompts with a clear edge.',
-  space: 'Mission-style check-ins.',
-  guardian: 'Quiet, focused, protective.',
-  gremlin: 'Playful nudges with dry humor.'
+  cozy: 'Warm and calm.',
+  strict: 'Clear and direct.',
+  space: 'Light mission energy.',
+  guardian: 'Quiet and focused.',
+  gremlin: 'Dry and playful.'
+};
+
+const bubbleSizeLabels = {
+  small: 'Small',
+  medium: 'Medium',
+  large: 'Large'
 };
 
 function escapeHtml(value) {
@@ -83,8 +89,18 @@ function updateOnboardingDraftFromForm() {
   }
 }
 
-function renderAvatar(className, meta, size = '') {
+function renderAvatar(className, meta, size = '', customUrl = null) {
+  if (customUrl) {
+    return `<div class="${className} ${size} has-image" style="background-image: url('${escapeHtml(customUrl)}')"></div>`;
+  }
+
   return `<div class="${className} personality-${escapeHtml(meta.id || 'cozy')} ${size}">${escapeHtml(meta.mark)}</div>`;
+}
+
+function currentAvatarUrl() {
+  return state.onboardingComplete && state.appearance && state.appearance.avatarMode === 'custom'
+    ? state.appearance.customAvatarUrl
+    : null;
 }
 
 function renderTopbar() {
@@ -97,7 +113,7 @@ function renderTopbar() {
   return `
     <header class="topbar" style="${accentStyle(meta.accent)}">
       <div class="brand">
-        ${renderAvatar('avatar', meta)}
+        ${renderAvatar('avatar', meta, '', currentAvatarUrl())}
         <div class="brand-copy">
           <div class="eyebrow">${escapeHtml(meta.label)}</div>
           <h1 class="title">${escapeHtml(companionName || 'Pip')}</h1>
@@ -192,7 +208,7 @@ function renderOnboarding() {
         ${renderAvatar('avatar hero-avatar', selectedMeta)}
         <div>
           <h1>Meet Pip</h1>
-          <p>A calm desktop companion for small reminders, breaks, and better workdays.</p>
+          <p>Small reminders. Quiet presence.</p>
         </div>
         ${renderOnboardingNav('Get started', false)}
       </div>
@@ -201,7 +217,7 @@ function renderOnboarding() {
       <form class="form onboarding-card" data-onboarding-form>
         <div>
           <h1>Name your companion</h1>
-          <p>You can change this later.</p>
+          <p>Change it anytime.</p>
         </div>
         <label class="field">
           <span>Name</span>
@@ -214,7 +230,7 @@ function renderOnboarding() {
       <div class="form onboarding-card" data-onboarding-form>
         <div>
           <h1>Choose a personality</h1>
-          <p>Pick the tone that will feel welcome on a busy day.</p>
+          <p>Pick a tone.</p>
         </div>
         ${renderPersonalityOptions(onboardingDraft.personality)}
         ${renderOnboardingNav('Continue')}
@@ -224,7 +240,7 @@ function renderOnboarding() {
       <form class="form onboarding-card" data-onboarding-form>
         <div>
           <h1>Set your rhythm</h1>
-          <p>Start gentle. Tune the details anytime.</p>
+          <p>Start gentle.</p>
         </div>
         ${renderOnboardingPreferences()}
         ${renderOnboardingNav('Start Pip')}
@@ -253,7 +269,7 @@ function renderCurrentNudge() {
     return `
       <section class="card hero-card">
         <div class="nudge-label">Quiet right now</div>
-        <p class="empty-copy">No active check-ins.</p>
+        <p class="empty-copy">All clear.</p>
       </section>
     `;
   }
@@ -296,12 +312,12 @@ function renderTodayDashboard() {
         <div class="today-stat">
           <span class="stat-label">Next</span>
           <strong>${nextReminder ? escapeHtml(nextReminder.displayTime) : 'None'}</strong>
-          <span>${nextReminder ? escapeHtml(state.privateMode ? 'Private reminder' : nextReminder.title) : 'No reminders scheduled.'}</span>
+          <span>${nextReminder ? escapeHtml(state.privateMode ? 'Private reminder' : nextReminder.title) : 'Nothing scheduled.'}</span>
         </div>
         <div class="today-stat">
           <span class="stat-label">Missed</span>
           <strong>${Number(today.missedCount || 0)}</strong>
-          <span>Queued while quiet.</span>
+          <span>Held quietly.</span>
         </div>
       </div>
       <div class="quick-actions quick-actions-four">
@@ -358,9 +374,42 @@ function renderReminders() {
               <button class="icon-button" data-reminder-delete="${reminder.id}" title="Delete">x</button>
             </div>
           </div>
-        `).join('') : '<p class="empty-copy">No reminders yet.</p>'}
+        `).join('') : '<p class="empty-copy">No reminders.</p>'}
       </div>
     </section>
+  `;
+}
+
+function renderAvatarSettings() {
+  const appearance = state.appearance || {};
+  const isCustom = appearance.avatarMode === 'custom' && appearance.customAvatarUrl;
+  const meta = state.personalityMeta;
+
+  return `
+    <div class="card form">
+      <div class="section-head">
+        <div>
+          <h3 class="card-title">Pip Bubble</h3>
+          <p class="empty-copy">Size and avatar.</p>
+        </div>
+        ${renderAvatar('avatar', meta, '', isCustom ? appearance.customAvatarUrl : null)}
+      </div>
+      <div class="field">
+        <label>Size</label>
+        <div class="segmented">
+          ${Object.entries(bubbleSizeLabels).map(([value, label]) => `
+            <button class="segment ${appearance.bubbleSize === value ? 'is-selected' : ''}" data-bubble-size="${value}" type="button">${label}</button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label>Avatar</label>
+        <div class="button-row">
+          <button class="button ${appearance.avatarMode !== 'custom' ? 'safe-on' : ''}" data-action="useEmojiAvatar" type="button">Emoji</button>
+          <button class="button ${appearance.avatarMode === 'custom' ? 'safe-on' : ''}" data-action="chooseCustomAvatar" type="button">Custom Image</button>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -449,6 +498,8 @@ function renderSettings() {
               <input type="hidden" name="personality" value="${escapeHtml(selected)}" />
             </div>
           </div>
+
+          ${renderAvatarSettings()}
 
           <div class="card form">
             ${Object.entries(state.nudges).map(([key, config]) => `
@@ -640,6 +691,25 @@ app.addEventListener('click', async (event) => {
 
   if (target.dataset.action === 'togglePrivate') {
     await refresh(await window.pipAPI.updateSettings({ privateMode: !state.privateMode }));
+    return;
+  }
+
+  if (target.dataset.bubbleSize) {
+    await refresh(await window.pipAPI.updateSettings({
+      appearance: { bubbleSize: target.dataset.bubbleSize }
+    }));
+    return;
+  }
+
+  if (target.dataset.action === 'useEmojiAvatar') {
+    await refresh(await window.pipAPI.updateSettings({
+      appearance: { avatarMode: 'emoji' }
+    }));
+    return;
+  }
+
+  if (target.dataset.action === 'chooseCustomAvatar') {
+    await refresh(await window.pipAPI.chooseCustomAvatar());
     return;
   }
 

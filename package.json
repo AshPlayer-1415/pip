@@ -1,5 +1,6 @@
 {
   "name": "pip",
+  "productName": "Pip",
   "version": "0.1.0",
   "description": "A gentle private macOS desktop companion for reminders, hydration, screen breaks, and motivation.",
   "main": "src/main.js",
@@ -13,6 +14,7 @@
   "build": {
     "appId": "com.pip.desktop",
     "productName": "Pip",
+    "executableName": "Pip",
     "files": [
       "src/**/*",
       "assets/**/*",

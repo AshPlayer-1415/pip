@@ -1,8 +1,11 @@
 const path = require('path');
+const fs = require('fs');
+const { pathToFileURL } = require('url');
 const { randomUUID } = require('crypto');
 const {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Menu,
   nativeImage,
@@ -15,7 +18,11 @@ const { messageBank, nudgeLabels, pickMessage } = require('./messages');
 const packageJson = require('../package.json');
 
 const NUDGE_KEYS = ['water', 'eyeBreak', 'stretch', 'motivation'];
-const BUBBLE_SIZE = { collapsed: [86, 86], expanded: [300, 118] };
+const BUBBLE_SIZES = {
+  small: 58,
+  medium: 72,
+  large: 90
+};
 const PANEL_SIZE = { width: 420, height: 640 };
 const CHECK_INTERVAL_MS = 30 * 1000;
 
@@ -25,6 +32,12 @@ const defaultState = {
   personality: 'cozy',
   privateMode: false,
   presentationSafeMode: false,
+  appearance: {
+    bubbleSize: 'medium',
+    bubblePosition: null,
+    avatarMode: 'emoji',
+    customAvatarPath: null
+  },
   missedQueue: [],
   currentNudge: null,
   nudges: {
@@ -42,7 +55,6 @@ let tray;
 let bubbleWindow;
 let panelWindow;
 let scheduler;
-let bubbleExpanded = false;
 let lastReminderCheckAt;
 let appNotice = null;
 
@@ -87,6 +99,37 @@ function saveState() {
   }
   broadcastState();
   buildTrayMenu();
+}
+
+function bubbleDimension(size = state.appearance.bubbleSize) {
+  return BUBBLE_SIZES[size] || BUBBLE_SIZES.medium;
+}
+
+function displayForPoint(x, y) {
+  return screen.getDisplayNearestPoint({
+    x: Math.round(Number(x) || 0),
+    y: Math.round(Number(y) || 0)
+  });
+}
+
+function clampBubblePosition(position, size = state.appearance.bubbleSize) {
+  const dimension = bubbleDimension(size);
+  const fallbackDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const fallback = {
+    x: fallbackDisplay.workArea.x + fallbackDisplay.workArea.width - dimension - 24,
+    y: fallbackDisplay.workArea.y + fallbackDisplay.workArea.height - dimension - 24
+  };
+
+  const point = position && Number.isFinite(Number(position.x)) && Number.isFinite(Number(position.y))
+    ? { x: Number(position.x), y: Number(position.y) }
+    : fallback;
+
+  const display = displayForPoint(point.x + dimension / 2, point.y + dimension / 2);
+  const { x, y, width, height } = display.workArea;
+  return {
+    x: Math.round(Math.min(Math.max(point.x, x), x + width - dimension)),
+    y: Math.round(Math.min(Math.max(point.y, y), y + height - dimension))
+  };
 }
 
 function localDateKey(date = new Date()) {
@@ -200,6 +243,17 @@ function normalizeState(nextState) {
   if (!messageBank[normalized.personality]) {
     normalized.personality = 'cozy';
   }
+  if (!BUBBLE_SIZES[normalized.appearance.bubbleSize]) {
+    normalized.appearance.bubbleSize = 'medium';
+  }
+  normalized.appearance.avatarMode = normalized.appearance.avatarMode === 'custom' ? 'custom' : 'emoji';
+  if (normalized.appearance.customAvatarPath && !fs.existsSync(normalized.appearance.customAvatarPath)) {
+    normalized.appearance.customAvatarPath = null;
+    normalized.appearance.avatarMode = 'emoji';
+  }
+  normalized.appearance.bubblePosition = normalized.appearance.bubblePosition
+    ? clampBubblePosition(normalized.appearance.bubblePosition, normalized.appearance.bubbleSize)
+    : null;
 
   for (const key of NUDGE_KEYS) {
     const config = normalized.nudges[key];
@@ -237,8 +291,16 @@ function normalizeState(nextState) {
 
 function publicState() {
   const personality = messageBank[state.personality] || messageBank.cozy;
+  const customAvatarUrl = state.appearance.avatarMode === 'custom' && state.appearance.customAvatarPath
+    ? pathToFileURL(state.appearance.customAvatarPath).toString()
+    : null;
   return {
     ...clone(state),
+    appearance: {
+      ...clone(state.appearance),
+      customAvatarUrl,
+      bubbleSizes: Object.keys(BUBBLE_SIZES)
+    },
     personalityMeta: {
       label: personality.label,
       accent: personality.accent,
@@ -315,19 +377,48 @@ function buildTrayMenu() {
   ]));
 }
 
+function buildApplicationMenu() {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: 'Pip',
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'hide', label: 'Hide Pip' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit', label: 'Quit Pip' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    }
+  ]));
+}
+
 function positionBubble() {
   if (!bubbleWindow || bubbleWindow.isDestroyed()) {
     return;
   }
 
-  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  const { x, y, width, height } = display.workArea;
-  const [windowWidth, windowHeight] = bubbleExpanded ? BUBBLE_SIZE.expanded : BUBBLE_SIZE.collapsed;
+  const dimension = bubbleDimension();
+  const position = clampBubblePosition(state.appearance.bubblePosition, state.appearance.bubbleSize);
+  state.appearance.bubblePosition = position;
   bubbleWindow.setBounds({
-    width: windowWidth,
-    height: windowHeight,
-    x: Math.round(x + width - windowWidth - 24),
-    y: Math.round(y + height - windowHeight - 24)
+    width: dimension,
+    height: dimension,
+    x: position.x,
+    y: position.y
   });
 }
 
@@ -348,13 +439,14 @@ function positionPanel() {
 }
 
 function createBubbleWindow() {
+  const dimension = bubbleDimension();
   bubbleWindow = new BrowserWindow({
-    width: BUBBLE_SIZE.collapsed[0],
-    height: BUBBLE_SIZE.collapsed[1],
+    width: dimension,
+    height: dimension,
     frame: false,
     transparent: true,
     resizable: false,
-    movable: false,
+    movable: true,
     alwaysOnTop: true,
     skipTaskbar: true,
     hasShadow: false,
@@ -428,7 +520,9 @@ function togglePanel() {
 }
 
 function resizeBubble(expanded) {
-  bubbleExpanded = Boolean(expanded);
+  if (expanded) {
+    return;
+  }
   positionBubble();
 }
 
@@ -702,7 +796,25 @@ function sanitizeReminder(input) {
   };
 }
 
+function customAvatarDirectory() {
+  return path.join(app.getPath('userData'), 'avatars');
+}
+
+function copyCustomAvatar(sourcePath) {
+  const extension = path.extname(sourcePath).toLowerCase();
+  const safeExtension = ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(extension) ? extension : '.png';
+  fs.mkdirSync(customAvatarDirectory(), { recursive: true });
+  const destination = path.join(customAvatarDirectory(), `custom-avatar${safeExtension}`);
+  fs.copyFileSync(sourcePath, destination);
+  return destination;
+}
+
 function resetPip() {
+  try {
+    fs.rmSync(customAvatarDirectory(), { recursive: true, force: true });
+  } catch (error) {
+    console.error('Unable to clear Pip avatar storage:', error);
+  }
   state = normalizeState(defaultState);
   lastReminderCheckAt = new Date();
   clearNotice();
@@ -758,6 +870,14 @@ function registerIpc() {
     return publicState();
   });
   ipcMain.handle('bubble:setExpanded', (_event, expanded) => resizeBubble(expanded));
+  ipcMain.handle('bubble:setPosition', (_event, payload = {}) => {
+    state.appearance.bubblePosition = clampBubblePosition(payload.position || payload, state.appearance.bubbleSize);
+    positionBubble();
+    if (payload.persist !== false) {
+      saveState();
+    }
+    return publicState();
+  });
 
   ipcMain.handle('settings:previewOnboarding', (_event, payload = {}) => {
     if (!state.onboardingComplete) {
@@ -788,6 +908,20 @@ function registerIpc() {
       state.presentationSafeMode = patch.presentationSafeMode;
       if (state.presentationSafeMode) {
         state.currentNudge = null;
+      }
+    }
+    if (patch.appearance && typeof patch.appearance === 'object') {
+      if (BUBBLE_SIZES[patch.appearance.bubbleSize]) {
+        state.appearance.bubbleSize = patch.appearance.bubbleSize;
+        state.appearance.bubblePosition = clampBubblePosition(state.appearance.bubblePosition, state.appearance.bubbleSize);
+        positionBubble();
+      }
+      if (patch.appearance.avatarMode === 'emoji' || patch.appearance.avatarMode === 'custom') {
+        state.appearance.avatarMode = patch.appearance.avatarMode;
+        if (state.appearance.avatarMode === 'custom' && !state.appearance.customAvatarPath) {
+          state.appearance.avatarMode = 'emoji';
+          setNotice('Choose a custom avatar image first.', 'warning');
+        }
       }
     }
 
@@ -827,6 +961,36 @@ function registerIpc() {
     }
 
     saveState();
+    return publicState();
+  });
+
+  ipcMain.handle('avatar:chooseCustom', async () => {
+    const parentWindow = panelWindow && !panelWindow.isDestroyed() ? panelWindow : undefined;
+    const options = {
+      title: 'Choose Pip Avatar',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }
+      ]
+    };
+    const result = parentWindow
+      ? await dialog.showOpenDialog(parentWindow, options)
+      : await dialog.showOpenDialog(options);
+
+    if (result.canceled || !result.filePaths[0]) {
+      return publicState();
+    }
+
+    try {
+      state.appearance.customAvatarPath = copyCustomAvatar(result.filePaths[0]);
+      state.appearance.avatarMode = 'custom';
+      saveState();
+    } catch (error) {
+      console.error('Unable to copy custom avatar:', error);
+      setNotice('Pip could not save that avatar image locally.', 'error');
+      broadcastState();
+    }
+
     return publicState();
   });
 
@@ -889,7 +1053,15 @@ function registerIpc() {
   });
 }
 
+app.setName('Pip');
+
 app.whenReady().then(() => {
+  app.setName('Pip');
+  app.setAboutPanelOptions({
+    applicationName: 'Pip',
+    applicationVersion: packageJson.version,
+    version: packageJson.version
+  });
   if (process.platform === 'darwin' && app.dock) {
     app.dock.hide();
   }
@@ -901,6 +1073,7 @@ app.whenReady().then(() => {
   }
   lastReminderCheckAt = new Date();
 
+  buildApplicationMenu();
   tray = new Tray(createTrayImage());
   tray.on('click', togglePanel);
   buildTrayMenu();

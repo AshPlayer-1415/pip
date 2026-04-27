@@ -6,7 +6,7 @@ It is built for people who want a calm reminder layer on their desktop without a
 
 ## Status
 
-Pip is currently moving through a `v0.2.0` beta branch. Expect a focused, local-first desktop app rather than a fully polished commercial release.
+Pip is currently moving through a `v0.3.0` beta branch. Expect a focused, local-first desktop app rather than a fully polished commercial release.
 
 ## Screenshots
 

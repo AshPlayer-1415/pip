@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.3.0 beta
+
+Pip v0.3 introduces an Assistive Touch-style companion layer.
+
+- Added a compact quick menu that opens from the Pip bubble
+- Added Pip Home and Storage quick actions
+- Added Pip Assistant placeholder for future optional local assistant support
+- Added desktop quick actions for Screenshot, Notes, Lock Screen, Downloads, Applications, and Focus instructions
+- Added Quick Menu settings for 3, 4, 5, or 6 visible actions
+- Added customizable quick action slots while keeping Pip Home and Storage available
+- Added collapsible Quick Storage shelf with local collapsed-state persistence
+- Kept reminders, Quick Storage, Private Mode, Presentation Safe Mode, onboarding, and macOS DMG packaging intact
+
 ## v0.2.0 beta
 
 Pip v0.2 moves the app toward a more minimal desktop companion.

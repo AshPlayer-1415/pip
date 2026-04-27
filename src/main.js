@@ -804,6 +804,11 @@ function createQuickMenuWindow() {
 }
 
 function showQuickMenu() {
+  if (!state.onboardingComplete) {
+    showPanel('dashboard');
+    return;
+  }
+
   if (!quickMenuWindow || quickMenuWindow.isDestroyed()) {
     createQuickMenuWindow();
   }
@@ -818,6 +823,11 @@ function showQuickMenu() {
 }
 
 function toggleQuickMenu() {
+  if (!state.onboardingComplete) {
+    showPanel('dashboard');
+    return;
+  }
+
   if (!quickMenuWindow || quickMenuWindow.isDestroyed()) {
     createQuickMenuWindow();
   }
@@ -1562,12 +1572,15 @@ function applyOnboardingPayload(payload = {}, options = {}) {
   }
 }
 
-function runCommand(file, args = [], fallbackMessage = 'Pip could not complete that action.') {
+function runCommand(file, args = [], fallbackMessage = 'Pip could not complete that action.', fallbackView = null) {
   execFile(file, args, (error) => {
     if (error) {
       console.error('Quick action failed:', error);
       setNotice(fallbackMessage, 'warning');
       broadcastState();
+      if (fallbackView) {
+        showPanel(fallbackView);
+      }
     }
   });
 }
@@ -1602,17 +1615,17 @@ function performQuickAction(actionId) {
   }
 
   if (actionId === 'screenshot') {
-    runCommand('/usr/bin/open', ['-a', 'Screenshot'], 'Press Command-Shift-5 to open macOS Screenshot.');
+    runCommand('/usr/bin/open', ['-a', 'Screenshot'], 'Press Command-Shift-5 to open macOS Screenshot.', 'dashboard');
     return publicState();
   }
 
   if (actionId === 'notes') {
-    runCommand('/usr/bin/open', ['-a', 'Notes'], 'Pip could not open Notes.');
+    runCommand('/usr/bin/open', ['-a', 'Notes'], 'Pip could not open Notes.', 'dashboard');
     return publicState();
   }
 
   if (actionId === 'lock') {
-    runCommand('/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession', ['-suspend'], 'Use Control-Command-Q to lock this Mac.');
+    runCommand('/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession', ['-suspend'], 'Use Control-Command-Q to lock this Mac.', 'dashboard');
     return publicState();
   }
 

@@ -1090,4 +1090,11 @@ window.pipAPI.onStateChanged((nextState) => {
   render();
 });
 
+if (window.pipAPI.onPanelAnchorChanged) {
+  window.pipAPI.onPanelAnchorChanged((side) => {
+    document.body.classList.toggle('anchor-left', side === 'left');
+    document.body.classList.toggle('anchor-right', side !== 'left');
+  });
+}
+
 refresh();

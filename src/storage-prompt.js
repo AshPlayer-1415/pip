@@ -9,7 +9,12 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-function renderPrompt(prompt) {
+function renderPrompt(payload) {
+  const prompt = payload && payload.prompt !== undefined ? payload.prompt : payload;
+  const anchorSide = payload && payload.anchorSide === 'left' ? 'left' : 'right';
+  document.body.classList.toggle('anchor-left', anchorSide === 'left');
+  document.body.classList.toggle('anchor-right', anchorSide !== 'left');
+
   if (!prompt) {
     promptRoot.innerHTML = '';
     return;

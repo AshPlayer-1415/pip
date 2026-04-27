@@ -49,7 +49,7 @@ button {
 }
 
 .panel-body {
-  padding: 12px;
+  padding: 12px 20px;
   background: transparent;
   overflow: hidden;
 }
@@ -65,6 +65,35 @@ button {
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.panel-shell::before,
+.storage-prompt-card::before {
+  content: "";
+  position: absolute;
+  top: var(--tail-top, 50%);
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, rgba(29, 33, 43, 0.98), rgba(14, 16, 21, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: translateY(-50%) rotate(45deg);
+  box-shadow: 10px 10px 26px rgba(0, 0, 0, 0.12);
+  z-index: -1;
+}
+
+.anchor-right .panel-shell::before,
+.anchor-right .storage-prompt-card::before {
+  right: -8px;
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.anchor-left .panel-shell::before,
+.anchor-left .storage-prompt-card::before {
+  left: -8px;
+  border-right: 0;
+  border-top: 0;
 }
 
 .topbar {
@@ -881,6 +910,7 @@ button {
   background: linear-gradient(180deg, rgba(29, 33, 43, 0.98), rgba(14, 16, 21, 0.98));
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42);
+  position: relative;
 }
 
 .storage-prompt-card h1 {

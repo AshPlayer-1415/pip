@@ -33,8 +33,13 @@ contextBridge.exposeInMainWorld('pipAPI', {
     ipcRenderer.on('state:changed', listener);
     return () => ipcRenderer.removeListener('state:changed', listener);
   },
+  onPanelAnchorChanged: (callback) => {
+    const listener = (_event, side) => callback(side);
+    ipcRenderer.on('panel:anchor', listener);
+    return () => ipcRenderer.removeListener('panel:anchor', listener);
+  },
   onStoragePromptChanged: (callback) => {
-    const listener = (_event, prompt) => callback(prompt);
+    const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('storage-prompt:changed', listener);
     return () => ipcRenderer.removeListener('storage-prompt:changed', listener);
   }

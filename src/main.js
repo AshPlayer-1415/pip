@@ -25,6 +25,7 @@ const BUBBLE_SIZES = {
   large: 90
 };
 const PANEL_SIZE = { width: 420, height: 640 };
+const PANEL_GAP = 14;
 const CHECK_INTERVAL_MS = 30 * 1000;
 
 const defaultState = {
@@ -64,6 +65,8 @@ let scheduler;
 let lastReminderCheckAt;
 let appNotice = null;
 let storagePrompt = null;
+let panelAnchorSide = 'right';
+let storagePromptAnchorSide = 'right';
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -119,9 +122,21 @@ function displayForPoint(x, y) {
   });
 }
 
+function bubbleCenterPoint() {
+  if (bubbleWindow && !bubbleWindow.isDestroyed()) {
+    const bounds = bubbleWindow.getBounds();
+    return {
+      x: bounds.x + bounds.width / 2,
+      y: bounds.y + bounds.height / 2
+    };
+  }
+
+  return screen.getCursorScreenPoint();
+}
+
 function clampBubblePosition(position, size = state.appearance.bubbleSize) {
   const dimension = bubbleDimension(size);
-  const fallbackDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const fallbackDisplay = screen.getDisplayNearestPoint(bubbleCenterPoint());
   const fallback = {
     x: fallbackDisplay.workArea.x + fallbackDisplay.workArea.width - dimension - 24,
     y: fallbackDisplay.workArea.y + fallbackDisplay.workArea.height - dimension - 24
@@ -352,9 +367,18 @@ function broadcastState() {
   }
 }
 
+function sendPanelAnchor() {
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.webContents.send('panel:anchor', panelAnchorSide);
+  }
+}
+
 function broadcastStoragePrompt() {
   if (storagePromptWindow && !storagePromptWindow.isDestroyed()) {
-    storagePromptWindow.webContents.send('storage-prompt:changed', storagePrompt);
+    storagePromptWindow.webContents.send('storage-prompt:changed', {
+      prompt: storagePrompt,
+      anchorSide: storagePromptAnchorSide
+    });
   }
 }
 
@@ -440,6 +464,52 @@ function positionBubble() {
     y: position.y
   });
   positionStoragePrompt();
+  if (panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
+    positionPanel();
+  }
+}
+
+function anchoredWindowBounds({ width, height, preferLeft = true }) {
+  if (!bubbleWindow || bubbleWindow.isDestroyed()) {
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    const workArea = display.workArea;
+    return {
+      bounds: {
+        width,
+        height,
+        x: Math.round(workArea.x + workArea.width - width - 24),
+        y: Math.round(workArea.y + workArea.height - height - 24)
+      },
+      side: 'right'
+    };
+  }
+
+  const bubbleBounds = bubbleWindow.getBounds();
+  const bubbleCenterX = bubbleBounds.x + bubbleBounds.width / 2;
+  const bubbleCenterY = bubbleBounds.y + bubbleBounds.height / 2;
+  const display = displayForPoint(bubbleCenterX, bubbleCenterY);
+  const workArea = display.workArea;
+  const availableLeft = bubbleBounds.x - workArea.x;
+  const availableRight = workArea.x + workArea.width - (bubbleBounds.x + bubbleBounds.width);
+  const side = preferLeft && availableLeft >= width + PANEL_GAP
+    ? 'right'
+    : (!preferLeft && availableRight >= width + PANEL_GAP
+      ? 'left'
+      : (availableLeft >= availableRight ? 'right' : 'left'));
+  const rawX = side === 'right'
+    ? bubbleBounds.x - width - PANEL_GAP
+    : bubbleBounds.x + bubbleBounds.width + PANEL_GAP;
+  const rawY = bubbleCenterY - height / 2;
+
+  return {
+    bounds: {
+      width,
+      height,
+      x: Math.round(Math.min(Math.max(rawX, workArea.x), workArea.x + workArea.width - width)),
+      y: Math.round(Math.min(Math.max(rawY, workArea.y), workArea.y + workArea.height - height))
+    },
+    side
+  };
 }
 
 function positionPanel() {
@@ -447,15 +517,21 @@ function positionPanel() {
     return;
   }
 
-  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  const { x, y, width, height } = display.workArea;
-  const panelHeight = Math.min(PANEL_SIZE.height, height - 48);
-  panelWindow.setBounds({
+  const display = bubbleWindow && !bubbleWindow.isDestroyed()
+    ? displayForPoint(
+      bubbleWindow.getBounds().x + bubbleWindow.getBounds().width / 2,
+      bubbleWindow.getBounds().y + bubbleWindow.getBounds().height / 2
+    )
+    : screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const panelHeight = Math.min(PANEL_SIZE.height, display.workArea.height - 48);
+  const result = anchoredWindowBounds({
     width: PANEL_SIZE.width,
     height: panelHeight,
-    x: Math.round(x + width - PANEL_SIZE.width - 24),
-    y: Math.round(y + height - panelHeight - 126)
+    preferLeft: true
   });
+  panelAnchorSide = result.side;
+  panelWindow.setBounds(result.bounds);
+  sendPanelAnchor();
 }
 
 function createBubbleWindow() {
@@ -493,20 +569,14 @@ function positionStoragePrompt() {
 
   const promptWidth = 286;
   const promptHeight = 190;
-  const bubbleBounds = bubbleWindow.getBounds();
-  const display = displayForPoint(bubbleBounds.x + bubbleBounds.width / 2, bubbleBounds.y + bubbleBounds.height / 2);
-  const workArea = display.workArea;
-  const preferredX = bubbleBounds.x - promptWidth - 12;
-  const fallbackX = bubbleBounds.x + bubbleBounds.width + 12;
-  const preferredY = bubbleBounds.y - Math.round((promptHeight - bubbleBounds.height) / 2);
-
-  const x = preferredX >= workArea.x ? preferredX : fallbackX;
-  storagePromptWindow.setBounds({
+  const result = anchoredWindowBounds({
     width: promptWidth,
     height: promptHeight,
-    x: Math.round(Math.min(Math.max(x, workArea.x), workArea.x + workArea.width - promptWidth)),
-    y: Math.round(Math.min(Math.max(preferredY, workArea.y), workArea.y + workArea.height - promptHeight))
+    preferLeft: true
   });
+  storagePromptAnchorSide = result.side;
+  storagePromptWindow.setBounds(result.bounds);
+  broadcastStoragePrompt();
 }
 
 function closeStoragePrompt() {
@@ -555,6 +625,13 @@ function showStoragePrompt(prompt) {
   broadcastStoragePrompt();
 }
 
+function hidePanel() {
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.hide();
+    buildTrayMenu();
+  }
+}
+
 function createPanelWindow() {
   panelWindow = new BrowserWindow({
     width: PANEL_SIZE.width,
@@ -577,8 +654,7 @@ function createPanelWindow() {
   panelWindow.loadFile(path.join(__dirname, 'panel.html'));
   panelWindow.on('blur', () => {
     if (panelWindow && panelWindow.isVisible()) {
-      panelWindow.hide();
-      buildTrayMenu();
+      hidePanel();
     }
   });
 }
@@ -601,7 +677,7 @@ function togglePanel() {
   }
 
   if (panelWindow.isVisible()) {
-    panelWindow.hide();
+    hidePanel();
   } else {
     showPanel();
   }
@@ -1148,7 +1224,7 @@ function registerIpc() {
   ipcMain.handle('app:getState', () => publicState());
   ipcMain.handle('app:togglePanel', () => togglePanel());
   ipcMain.handle('app:showPanel', () => showPanel());
-  ipcMain.handle('app:closePanel', () => panelWindow && panelWindow.hide());
+  ipcMain.handle('app:closePanel', () => hidePanel());
   ipcMain.handle('app:clearNotice', () => {
     clearNotice();
     broadcastState();
@@ -1158,6 +1234,9 @@ function registerIpc() {
   ipcMain.handle('bubble:setPosition', (_event, payload = {}) => {
     state.appearance.bubblePosition = clampBubblePosition(payload.position || payload, state.appearance.bubbleSize);
     positionBubble();
+    if (payload.persist !== false && panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
+      hidePanel();
+    }
     if (payload.persist !== false) {
       saveState();
     }

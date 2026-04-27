@@ -3,8 +3,10 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('pipAPI', {
   getState: () => ipcRenderer.invoke('app:getState'),
   togglePanel: () => ipcRenderer.invoke('app:togglePanel'),
+  toggleQuickMenu: () => ipcRenderer.invoke('app:toggleQuickMenu'),
   showPanel: () => ipcRenderer.invoke('app:showPanel'),
   closePanel: () => ipcRenderer.invoke('app:closePanel'),
+  closeAssistant: () => ipcRenderer.invoke('app:closeAssistant'),
   clearNotice: () => ipcRenderer.invoke('app:clearNotice'),
   resetPip: () => ipcRenderer.invoke('app:reset'),
   setBubbleExpanded: (expanded) => ipcRenderer.invoke('bubble:setExpanded', expanded),
@@ -20,6 +22,7 @@ contextBridge.exposeInMainWorld('pipAPI', {
   revealStorageFile: (payload) => ipcRenderer.invoke('storage:reveal', payload),
   deleteStorageFile: (payload) => ipcRenderer.invoke('storage:delete', payload),
   moveStoragePermanent: (id) => ipcRenderer.invoke('storage:movePermanent', id),
+  runQuickAction: (actionId) => ipcRenderer.invoke('quickMenu:action', actionId),
   previewOnboarding: (payload) => ipcRenderer.invoke('settings:previewOnboarding', payload),
   completeOnboarding: (payload) => ipcRenderer.invoke('settings:completeOnboarding', payload),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
@@ -49,5 +52,20 @@ contextBridge.exposeInMainWorld('pipAPI', {
     const listener = (_event, side) => callback(side);
     ipcRenderer.on('shelf:anchor', listener);
     return () => ipcRenderer.removeListener('shelf:anchor', listener);
+  },
+  onQuickMenuAnchorChanged: (callback) => {
+    const listener = (_event, side) => callback(side);
+    ipcRenderer.on('quick-menu:anchor', listener);
+    return () => ipcRenderer.removeListener('quick-menu:anchor', listener);
+  },
+  onAssistantAnchorChanged: (callback) => {
+    const listener = (_event, side) => callback(side);
+    ipcRenderer.on('assistant:anchor', listener);
+    return () => ipcRenderer.removeListener('assistant:anchor', listener);
+  },
+  onPanelView: (callback) => {
+    const listener = (_event, view) => callback(view);
+    ipcRenderer.on('panel:view', listener);
+    return () => ipcRenderer.removeListener('panel:view', listener);
   }
 });

@@ -16,14 +16,28 @@ function fileInitial(filename) {
 
 function renderShelf(state) {
   const currentItems = (state.quickStorageShelf || []).slice(0, 4);
+  const collapsed = Boolean(state.appearance && state.appearance.storageShelfCollapsed);
+  document.body.classList.toggle('is-collapsed', collapsed);
 
   if (!currentItems.length) {
     shelfRoot.innerHTML = '';
     return;
   }
 
+  if (collapsed) {
+    shelfRoot.innerHTML = `
+      <section class="storage-shelf-tray is-collapsed">
+        <button class="storage-shelf-collapse" data-action="expandShelf" type="button" title="Show Quick Storage">
+          <span class="storage-shelf-badge">${currentItems.length}</span>
+        </button>
+      </section>
+    `;
+    return;
+  }
+
   shelfRoot.innerHTML = `
     <section class="storage-shelf-tray">
+      <button class="storage-shelf-toggle" data-action="collapseShelf" type="button" title="Collapse Quick Storage">-</button>
       <div class="storage-shelf-items">
         ${currentItems.map((item) => `
           <button
@@ -70,6 +84,16 @@ shelfRoot.addEventListener('dragstart', (event) => {
 });
 
 shelfRoot.addEventListener('click', async (event) => {
+  const actionButton = event.target.closest('[data-action]');
+  if (actionButton && actionButton.dataset.action === 'collapseShelf') {
+    await window.pipAPI.updateSettings({ appearance: { storageShelfCollapsed: true } });
+    return;
+  }
+  if (actionButton && actionButton.dataset.action === 'expandShelf') {
+    await window.pipAPI.updateSettings({ appearance: { storageShelfCollapsed: false } });
+    return;
+  }
+
   const payload = storagePayloadFromTarget(event.target);
   if (payload) {
     await window.pipAPI.revealStorageFile(payload);

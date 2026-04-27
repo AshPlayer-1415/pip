@@ -72,7 +72,9 @@ button {
 
 .panel-shell::before,
 .storage-prompt-card::before,
-.storage-shelf-tray::before {
+.storage-shelf-tray::before,
+.quick-menu-card::before,
+.assistant-card::before {
   content: "";
   position: absolute;
   top: var(--tail-top, 50%);
@@ -88,7 +90,9 @@ button {
 
 .anchor-right .panel-shell::before,
 .anchor-right .storage-prompt-card::before,
-.anchor-right .storage-shelf-tray::before {
+.anchor-right .storage-shelf-tray::before,
+.anchor-right .quick-menu-card::before,
+.anchor-right .assistant-card::before {
   right: -7px;
   border-left: 0;
   border-bottom: 0;
@@ -96,7 +100,9 @@ button {
 
 .anchor-left .panel-shell::before,
 .anchor-left .storage-prompt-card::before,
-.anchor-left .storage-shelf-tray::before {
+.anchor-left .storage-shelf-tray::before,
+.anchor-left .quick-menu-card::before,
+.anchor-left .assistant-card::before {
   left: -7px;
   border-right: 0;
   border-top: 0;
@@ -436,6 +442,22 @@ button {
 }
 
 .quick-actions-four .button {
+  font-size: 12px;
+}
+
+.quick-menu-fixed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-menu-fixed span {
+  min-height: 30px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   font-size: 12px;
 }
 
@@ -955,6 +977,10 @@ button {
   padding: 30px 12px 6px;
 }
 
+.storage-shelf-body.is-collapsed {
+  padding: 6px;
+}
+
 .storage-shelf {
   width: 100%;
   height: 100%;
@@ -1067,6 +1093,151 @@ button {
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.02em;
+}
+
+.storage-shelf-toggle {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.storage-shelf-tray.is-collapsed {
+  --tail-top: 29px;
+  border-radius: 999px;
+  padding: 0;
+}
+
+.storage-shelf-collapse {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.storage-shelf-badge {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #111217;
+  background: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.quick-menu-body,
+.assistant-body {
+  background: transparent;
+  overflow: hidden;
+  padding: 12px 20px;
+}
+
+.quick-menu,
+.assistant-card {
+  width: 100%;
+  height: 100%;
+}
+
+.quick-menu-card,
+.assistant-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 28px;
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(29, 33, 43, 0.92), rgba(14, 16, 21, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 74px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  position: relative;
+  z-index: 0;
+  backdrop-filter: blur(22px);
+}
+
+.quick-menu-card {
+  padding: 14px;
+}
+
+.quick-menu-grid {
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.quick-menu-grid.count-3,
+.quick-menu-grid.count-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quick-menu-action {
+  min-width: 0;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  cursor: pointer;
+}
+
+.quick-menu-action:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.quick-menu-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #101218;
+  background: var(--accent);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.quick-menu-action span:last-child {
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+}
+
+.assistant-card {
+  padding: 20px;
+  display: grid;
+  align-content: space-between;
+}
+
+.assistant-kicker {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.assistant-card h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.18;
+  font-weight: 760;
 }
 
 @keyframes breathe {

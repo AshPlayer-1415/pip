@@ -110,7 +110,7 @@ bubble.addEventListener('click', (event) => {
     return;
   }
 
-  window.pipAPI.togglePanel();
+  window.pipAPI.toggleQuickMenu();
 });
 
 bubble.addEventListener('dragover', (event) => {

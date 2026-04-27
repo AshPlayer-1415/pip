@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 const { randomUUID } = require('crypto');
 const {
@@ -27,9 +28,25 @@ const BUBBLE_SIZES = {
 const PANEL_SIZE = { width: 420, height: 640 };
 const PANEL_GAP = 14;
 const SHELF_SIZE = { width: 214, height: 108 };
+const SHELF_COLLAPSED_SIZE = { width: 58, height: 58 };
 const SHELF_GAP = 8;
+const QUICK_MENU_SIZE = { width: 318, height: 254 };
+const ASSISTANT_SIZE = { width: 318, height: 206 };
 const CHECK_INTERVAL_MS = 30 * 1000;
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff', '.heic']);
+const QUICK_ACTION_OPTIONS = {
+  assistant: { id: 'assistant', label: 'Pip Assistant', icon: 'P' },
+  screenshot: { id: 'screenshot', label: 'Screenshot', icon: 'S' },
+  notes: { id: 'notes', label: 'Open Notes', icon: 'N' },
+  lock: { id: 'lock', label: 'Lock Screen', icon: 'L' },
+  downloads: { id: 'downloads', label: 'Open Downloads', icon: 'D' },
+  applications: { id: 'applications', label: 'Open Applications', icon: 'A' },
+  focus: { id: 'focus', label: 'Focus Instructions', icon: 'F' }
+};
+const DEFAULT_QUICK_MENU = {
+  actionCount: 6,
+  actions: ['assistant', 'screenshot', 'notes', 'lock']
+};
 
 const defaultState = {
   onboardingComplete: false,
@@ -41,7 +58,12 @@ const defaultState = {
     bubbleSize: 'medium',
     bubblePosition: null,
     avatarMode: 'emoji',
-    customAvatarPath: null
+    customAvatarPath: null,
+    storageShelfCollapsed: false
+  },
+  quickMenu: {
+    actionCount: DEFAULT_QUICK_MENU.actionCount,
+    actions: [...DEFAULT_QUICK_MENU.actions]
   },
   quickStorage: {
     temp: [],
@@ -65,6 +87,8 @@ let bubbleWindow;
 let panelWindow;
 let storagePromptWindow;
 let shelfWindow;
+let quickMenuWindow;
+let assistantWindow;
 let scheduler;
 let lastReminderCheckAt;
 let appNotice = null;
@@ -72,6 +96,9 @@ let storagePrompt = null;
 let panelAnchorSide = 'right';
 let storagePromptAnchorSide = 'right';
 let shelfAnchorSide = 'right';
+let quickMenuAnchorSide = 'right';
+let assistantAnchorSide = 'right';
+let requestedPanelView = 'dashboard';
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -264,6 +291,19 @@ function getModeSummary() {
   return { label: 'Normal', detail: 'Gentle nudges are active.', tone: 'normal' };
 }
 
+function quickMenuItems() {
+  const customActions = state.quickMenu.actions
+    .filter((id) => QUICK_ACTION_OPTIONS[id])
+    .slice(0, Math.max(1, state.quickMenu.actionCount - 2))
+    .map((id) => QUICK_ACTION_OPTIONS[id]);
+
+  return [
+    { id: 'home', label: 'Pip Home', icon: 'H' },
+    { id: 'storage', label: 'Storage', icon: 'Q' },
+    ...customActions
+  ].slice(0, state.quickMenu.actionCount);
+}
+
 function normalizeState(nextState) {
   const normalized = deepMerge(defaultState, nextState || {});
 
@@ -279,9 +319,24 @@ function normalizeState(nextState) {
     normalized.appearance.customAvatarPath = null;
     normalized.appearance.avatarMode = 'emoji';
   }
+  normalized.appearance.storageShelfCollapsed = Boolean(normalized.appearance.storageShelfCollapsed);
   normalized.appearance.bubblePosition = normalized.appearance.bubblePosition
     ? clampBubblePosition(normalized.appearance.bubblePosition, normalized.appearance.bubbleSize)
     : null;
+  normalized.quickMenu.actionCount = [3, 4, 5, 6].includes(Number(normalized.quickMenu.actionCount))
+    ? Number(normalized.quickMenu.actionCount)
+    : DEFAULT_QUICK_MENU.actionCount;
+  normalized.quickMenu.actions = Array.isArray(normalized.quickMenu.actions)
+    ? normalized.quickMenu.actions.filter((id) => QUICK_ACTION_OPTIONS[id]).slice(0, 4)
+    : [...DEFAULT_QUICK_MENU.actions];
+  for (const id of DEFAULT_QUICK_MENU.actions) {
+    if (normalized.quickMenu.actions.length >= 4) {
+      break;
+    }
+    if (!normalized.quickMenu.actions.includes(id)) {
+      normalized.quickMenu.actions.push(id);
+    }
+  }
   normalized.quickStorage.temp = Array.isArray(normalized.quickStorage.temp)
     ? normalized.quickStorage.temp.filter((item) => item && item.storedPath && fs.existsSync(item.storedPath))
     : [];
@@ -356,6 +411,8 @@ function publicState() {
     },
     notice: appNotice,
     quickStorageShelf: getQuickStorageShelfItems(),
+    quickMenuItems: quickMenuItems(),
+    quickActionOptions: Object.values(QUICK_ACTION_OPTIONS),
     today: {
       mode: getModeSummary(),
       nextReminder: getNextReminder(),
@@ -367,7 +424,7 @@ function publicState() {
 
 function broadcastState() {
   const snapshot = publicState();
-  for (const win of [bubbleWindow, panelWindow, shelfWindow]) {
+  for (const win of [bubbleWindow, panelWindow, shelfWindow, quickMenuWindow]) {
     if (win && !win.isDestroyed()) {
       win.webContents.send('state:changed', snapshot);
     }
@@ -377,6 +434,18 @@ function broadcastState() {
 function sendShelfAnchor() {
   if (shelfWindow && !shelfWindow.isDestroyed()) {
     shelfWindow.webContents.send('shelf:anchor', shelfAnchorSide);
+  }
+}
+
+function sendQuickMenuAnchor() {
+  if (quickMenuWindow && !quickMenuWindow.isDestroyed()) {
+    quickMenuWindow.webContents.send('quick-menu:anchor', quickMenuAnchorSide);
+  }
+}
+
+function sendAssistantAnchor() {
+  if (assistantWindow && !assistantWindow.isDestroyed()) {
+    assistantWindow.webContents.send('assistant:anchor', assistantAnchorSide);
   }
 }
 
@@ -416,8 +485,8 @@ function buildTrayMenu() {
   tray.setToolTip(`${state.companionName || 'Pip'} is running locally`);
   tray.setContextMenu(Menu.buildFromTemplate([
     {
-      label: panelWindow && panelWindow.isVisible() ? 'Hide Control Panel' : 'Open Control Panel',
-      click: togglePanel
+      label: quickMenuWindow && quickMenuWindow.isVisible() ? 'Hide Pip Menu' : 'Open Pip Menu',
+      click: toggleQuickMenu
     },
     {
       label: 'Presentation Safe Mode',
@@ -477,6 +546,8 @@ function positionBubble() {
     y: position.y
   });
   positionShelf();
+  positionQuickMenu();
+  positionAssistant();
   positionStoragePrompt();
   if (panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
     positionPanel();
@@ -620,24 +691,25 @@ function positionShelf() {
     return;
   }
 
+  const shelfSize = state.appearance.storageShelfCollapsed ? SHELF_COLLAPSED_SIZE : SHELF_SIZE;
   const bubbleBounds = bubbleWindow.getBounds();
   const bubbleCenterX = bubbleBounds.x + bubbleBounds.width / 2;
   const bubbleCenterY = bubbleBounds.y + bubbleBounds.height / 2;
   const workArea = displayForPoint(bubbleCenterX, bubbleCenterY).workArea;
   const availableLeft = bubbleBounds.x - workArea.x;
   const availableRight = workArea.x + workArea.width - (bubbleBounds.x + bubbleBounds.width);
-  const side = availableLeft >= SHELF_SIZE.width + SHELF_GAP || availableLeft >= availableRight ? 'right' : 'left';
+  const side = availableLeft >= shelfSize.width + SHELF_GAP || availableLeft >= availableRight ? 'right' : 'left';
   const rawX = side === 'right'
-    ? bubbleBounds.x - SHELF_SIZE.width - SHELF_GAP
+    ? bubbleBounds.x - shelfSize.width - SHELF_GAP
     : bubbleBounds.x + bubbleBounds.width + SHELF_GAP;
-  const rawY = bubbleCenterY - SHELF_SIZE.height / 2;
+  const rawY = bubbleCenterY - shelfSize.height / 2;
 
   shelfAnchorSide = side;
   shelfWindow.setBounds({
-    width: SHELF_SIZE.width,
-    height: SHELF_SIZE.height,
-    x: Math.round(Math.min(Math.max(rawX, workArea.x), workArea.x + workArea.width - SHELF_SIZE.width)),
-    y: Math.round(Math.min(Math.max(rawY, workArea.y), workArea.y + workArea.height - SHELF_SIZE.height))
+    width: shelfSize.width,
+    height: shelfSize.height,
+    x: Math.round(Math.min(Math.max(rawX, workArea.x), workArea.x + workArea.width - shelfSize.width)),
+    y: Math.round(Math.min(Math.max(rawY, workArea.y), workArea.y + workArea.height - shelfSize.height))
   });
   sendShelfAnchor();
 }
@@ -681,6 +753,141 @@ function createShelfWindow() {
     broadcastState();
     updateShelfVisibility();
   });
+}
+
+function positionQuickMenu() {
+  if (!quickMenuWindow || quickMenuWindow.isDestroyed()) {
+    return;
+  }
+
+  const result = anchoredWindowBounds({
+    width: QUICK_MENU_SIZE.width,
+    height: QUICK_MENU_SIZE.height,
+    preferLeft: true
+  });
+  quickMenuAnchorSide = result.side;
+  quickMenuWindow.setBounds(result.bounds);
+  sendQuickMenuAnchor();
+}
+
+function createQuickMenuWindow() {
+  quickMenuWindow = new BrowserWindow({
+    width: QUICK_MENU_SIZE.width,
+    height: QUICK_MENU_SIZE.height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  quickMenuWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  quickMenuWindow.loadFile(path.join(__dirname, 'quick-menu.html'));
+  quickMenuWindow.webContents.on('did-finish-load', () => {
+    sendQuickMenuAnchor();
+    broadcastState();
+  });
+  quickMenuWindow.on('blur', () => {
+    if (quickMenuWindow && quickMenuWindow.isVisible()) {
+      quickMenuWindow.hide();
+      buildTrayMenu();
+    }
+  });
+}
+
+function showQuickMenu() {
+  if (!quickMenuWindow || quickMenuWindow.isDestroyed()) {
+    createQuickMenuWindow();
+  }
+
+  closeStoragePrompt();
+  hideAssistant();
+  positionQuickMenu();
+  quickMenuWindow.show();
+  quickMenuWindow.focus();
+  broadcastState();
+  buildTrayMenu();
+}
+
+function toggleQuickMenu() {
+  if (!quickMenuWindow || quickMenuWindow.isDestroyed()) {
+    createQuickMenuWindow();
+  }
+
+  if (quickMenuWindow.isVisible()) {
+    quickMenuWindow.hide();
+    buildTrayMenu();
+  } else {
+    showQuickMenu();
+  }
+}
+
+function hideAssistant() {
+  if (assistantWindow && !assistantWindow.isDestroyed()) {
+    assistantWindow.hide();
+  }
+}
+
+function positionAssistant() {
+  if (!assistantWindow || assistantWindow.isDestroyed()) {
+    return;
+  }
+
+  const result = anchoredWindowBounds({
+    width: ASSISTANT_SIZE.width,
+    height: ASSISTANT_SIZE.height,
+    preferLeft: true
+  });
+  assistantAnchorSide = result.side;
+  assistantWindow.setBounds(result.bounds);
+  sendAssistantAnchor();
+}
+
+function createAssistantWindow() {
+  assistantWindow = new BrowserWindow({
+    width: ASSISTANT_SIZE.width,
+    height: ASSISTANT_SIZE.height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  assistantWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  assistantWindow.loadFile(path.join(__dirname, 'assistant.html'));
+  assistantWindow.webContents.on('did-finish-load', () => {
+    sendAssistantAnchor();
+  });
+  assistantWindow.on('blur', () => {
+    hideAssistant();
+  });
+}
+
+function showAssistant() {
+  if (!assistantWindow || assistantWindow.isDestroyed()) {
+    createAssistantWindow();
+  }
+
+  positionAssistant();
+  assistantWindow.show();
+  assistantWindow.focus();
 }
 
 function positionStoragePrompt() {
@@ -778,6 +985,7 @@ function createPanelWindow() {
   panelWindow.loadFile(path.join(__dirname, 'panel.html'));
   panelWindow.webContents.on('did-finish-load', () => {
     sendPanelAnchor();
+    panelWindow.webContents.send('panel:view', requestedPanelView);
     broadcastState();
   });
   panelWindow.on('blur', () => {
@@ -787,14 +995,20 @@ function createPanelWindow() {
   });
 }
 
-function showPanel() {
+function showPanel(view = 'dashboard') {
+  requestedPanelView = view || 'dashboard';
   if (!panelWindow || panelWindow.isDestroyed()) {
     createPanelWindow();
   }
 
+  if (quickMenuWindow && !quickMenuWindow.isDestroyed()) {
+    quickMenuWindow.hide();
+  }
+  hideAssistant();
   positionPanel();
   panelWindow.show();
   panelWindow.focus();
+  panelWindow.webContents.send('panel:view', requestedPanelView);
   broadcastState();
   buildTrayMenu();
 }
@@ -1348,11 +1562,90 @@ function applyOnboardingPayload(payload = {}, options = {}) {
   }
 }
 
+function runCommand(file, args = [], fallbackMessage = 'Pip could not complete that action.') {
+  execFile(file, args, (error) => {
+    if (error) {
+      console.error('Quick action failed:', error);
+      setNotice(fallbackMessage, 'warning');
+      broadcastState();
+    }
+  });
+}
+
+function openPathOrNotice(targetPath, fallbackMessage) {
+  shell.openPath(targetPath).then((error) => {
+    if (error) {
+      setNotice(fallbackMessage, 'warning');
+      broadcastState();
+    }
+  });
+}
+
+function performQuickAction(actionId) {
+  if (quickMenuWindow && !quickMenuWindow.isDestroyed()) {
+    quickMenuWindow.hide();
+  }
+
+  if (actionId === 'home') {
+    showPanel('dashboard');
+    return publicState();
+  }
+
+  if (actionId === 'storage') {
+    showPanel('storage');
+    return publicState();
+  }
+
+  if (actionId === 'assistant') {
+    showAssistant();
+    return publicState();
+  }
+
+  if (actionId === 'screenshot') {
+    runCommand('/usr/bin/open', ['-a', 'Screenshot'], 'Press Command-Shift-5 to open macOS Screenshot.');
+    return publicState();
+  }
+
+  if (actionId === 'notes') {
+    runCommand('/usr/bin/open', ['-a', 'Notes'], 'Pip could not open Notes.');
+    return publicState();
+  }
+
+  if (actionId === 'lock') {
+    runCommand('/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession', ['-suspend'], 'Use Control-Command-Q to lock this Mac.');
+    return publicState();
+  }
+
+  if (actionId === 'downloads') {
+    openPathOrNotice(app.getPath('downloads'), 'Pip could not open Downloads.');
+    return publicState();
+  }
+
+  if (actionId === 'applications') {
+    openPathOrNotice('/Applications', 'Pip could not open Applications.');
+    return publicState();
+  }
+
+  if (actionId === 'focus') {
+    setNotice('Use Control Center to adjust Focus or Do Not Disturb.', 'info');
+    showPanel('settings');
+    return publicState();
+  }
+
+  return publicState();
+}
+
 function registerIpc() {
   ipcMain.handle('app:getState', () => publicState());
   ipcMain.handle('app:togglePanel', () => togglePanel());
-  ipcMain.handle('app:showPanel', () => showPanel());
+  ipcMain.handle('app:toggleQuickMenu', () => toggleQuickMenu());
+  ipcMain.handle('app:showPanel', (_event, view) => showPanel(view));
   ipcMain.handle('app:closePanel', () => hidePanel());
+  ipcMain.handle('app:closeAssistant', () => {
+    hideAssistant();
+    return publicState();
+  });
+  ipcMain.handle('quickMenu:action', (_event, actionId) => performQuickAction(actionId));
   ipcMain.handle('app:clearNotice', () => {
     clearNotice();
     broadcastState();
@@ -1457,6 +1750,28 @@ function registerIpc() {
           state.appearance.avatarMode = 'emoji';
           setNotice('Choose a custom avatar image first.', 'warning');
         }
+      }
+      if (typeof patch.appearance.storageShelfCollapsed === 'boolean') {
+        state.appearance.storageShelfCollapsed = patch.appearance.storageShelfCollapsed;
+        positionShelf();
+      }
+    }
+
+    if (patch.quickMenu && typeof patch.quickMenu === 'object') {
+      if ([3, 4, 5, 6].includes(Number(patch.quickMenu.actionCount))) {
+        state.quickMenu.actionCount = Number(patch.quickMenu.actionCount);
+      }
+      if (Array.isArray(patch.quickMenu.actions)) {
+        const nextActions = patch.quickMenu.actions.filter((id) => QUICK_ACTION_OPTIONS[id]).slice(0, 4);
+        for (const id of DEFAULT_QUICK_MENU.actions) {
+          if (nextActions.length >= 4) {
+            break;
+          }
+          if (!nextActions.includes(id)) {
+            nextActions.push(id);
+          }
+        }
+        state.quickMenu.actions = nextActions;
       }
     }
 
@@ -1714,17 +2029,21 @@ app.whenReady().then(() => {
 
   buildApplicationMenu();
   tray = new Tray(createTrayImage());
-  tray.on('click', togglePanel);
+  tray.on('click', toggleQuickMenu);
   buildTrayMenu();
 
   registerIpc();
   createBubbleWindow();
   createShelfWindow();
+  createQuickMenuWindow();
+  createAssistantWindow();
   createPanelWindow();
   createStoragePromptWindow();
   screen.on('display-metrics-changed', () => {
     positionBubble();
     positionShelf();
+    positionQuickMenu();
+    positionAssistant();
     positionPanel();
     positionStoragePrompt();
   });

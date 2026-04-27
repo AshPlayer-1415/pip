@@ -27,6 +27,16 @@ const bubbleSizeLabels = {
   large: 'Large'
 };
 
+const quickActionFallbacks = {
+  assistant: 'Pip Assistant',
+  screenshot: 'Screenshot',
+  notes: 'Open Notes',
+  lock: 'Lock Screen',
+  downloads: 'Open Downloads',
+  applications: 'Open Applications',
+  focus: 'Focus Instructions'
+};
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -545,6 +555,49 @@ function renderAvatarSettings() {
   `;
 }
 
+function renderQuickMenuSettings() {
+  const quickMenu = state.quickMenu || { actionCount: 6, actions: ['assistant', 'screenshot', 'notes', 'lock'] };
+  const actionOptions = state.quickActionOptions || [];
+  const slotCount = Math.max(1, Number(quickMenu.actionCount || 6) - 2);
+  const actions = [...(quickMenu.actions || [])];
+  while (actions.length < 4) {
+    actions.push(Object.keys(quickActionFallbacks)[actions.length] || 'assistant');
+  }
+
+  return `
+    <div class="card form">
+      <div class="section-head">
+        <div>
+          <h3 class="card-title">Quick Menu</h3>
+          <p class="empty-copy">Assistive shortcuts.</p>
+        </div>
+      </div>
+      <div class="field">
+        <label>Actions</label>
+        <div class="segmented">
+          ${[3, 4, 5, 6].map((count) => `
+            <button class="segment ${Number(quickMenu.actionCount) === count ? 'is-selected' : ''}" data-quick-count="${count}" type="button">${count}</button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="quick-menu-fixed">
+        <span>Pip Home</span>
+        <span>Storage</span>
+      </div>
+      ${Array.from({ length: slotCount }).map((_item, index) => `
+        <label class="field">
+          <span>Slot ${index + 3}</span>
+          <select class="select" data-quick-slot="${index}">
+            ${actionOptions.map((option) => `
+              <option value="${escapeHtml(option.id)}" ${actions[index] === option.id ? 'selected' : ''}>${escapeHtml(option.label)}</option>
+            `).join('')}
+          </select>
+        </label>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderDashboard() {
   return `
     ${renderTopbar()}
@@ -566,6 +619,22 @@ function renderDashboard() {
         ${renderQuickStorage()}
         ${renderQueue()}
         ${renderReminders()}
+      </div>
+    </section>
+  `;
+}
+
+function renderStoragePanel() {
+  return `
+    ${renderTopbar()}
+    <section class="content">
+      <div class="stack">
+        ${renderNotice()}
+        <div class="section-head">
+          <h2 class="section-title">Storage</h2>
+          <button class="button ghost" data-view="dashboard">Back</button>
+        </div>
+        ${renderQuickStorage()}
       </div>
     </section>
   `;
@@ -633,6 +702,8 @@ function renderSettings() {
           </div>
 
           ${renderAvatarSettings()}
+
+          ${renderQuickMenuSettings()}
 
           <div class="card form">
             ${Object.entries(state.nudges).map(([key, config]) => `
@@ -708,6 +779,8 @@ function render() {
     app.innerHTML = renderAddReminder();
   } else if (view === 'settings') {
     app.innerHTML = renderSettings();
+  } else if (view === 'storage') {
+    app.innerHTML = renderStoragePanel();
   } else {
     app.innerHTML = renderDashboard();
   }
@@ -900,6 +973,16 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (target.dataset.quickCount) {
+    await refresh(await window.pipAPI.updateSettings({
+      quickMenu: {
+        actionCount: Number(target.dataset.quickCount),
+        actions: state.quickMenu.actions
+      }
+    }));
+    return;
+  }
+
   if (target.dataset.action === 'useEmojiAvatar') {
     await refresh(await window.pipAPI.updateSettings({
       appearance: { avatarMode: 'emoji' }
@@ -1023,6 +1106,27 @@ app.addEventListener('wheel', (event) => {
   stepTimePicker(picker, wheel.dataset.timeWheel, event.deltaY > 0 ? 1 : -1);
 }, { passive: false });
 
+app.addEventListener('change', async (event) => {
+  const select = event.target.closest('[data-quick-slot]');
+  if (!select || !state) {
+    return;
+  }
+
+  const actions = [...(state.quickMenu.actions || [])];
+  const index = Number(select.dataset.quickSlot);
+  if (!Number.isInteger(index)) {
+    return;
+  }
+
+  actions[index] = select.value;
+  await refresh(await window.pipAPI.updateSettings({
+    quickMenu: {
+      actionCount: state.quickMenu.actionCount,
+      actions
+    }
+  }));
+});
+
 app.addEventListener('keydown', (event) => {
   const wheel = event.target.closest('[data-time-wheel]');
   if (!wheel) {
@@ -1094,6 +1198,15 @@ if (window.pipAPI.onPanelAnchorChanged) {
   window.pipAPI.onPanelAnchorChanged((side) => {
     document.body.classList.toggle('anchor-left', side === 'left');
     document.body.classList.toggle('anchor-right', side !== 'left');
+  });
+}
+
+if (window.pipAPI.onPanelView) {
+  window.pipAPI.onPanelView((nextView) => {
+    if (nextView) {
+      view = nextView;
+      render();
+    }
   });
 }
 

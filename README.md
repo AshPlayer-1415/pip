@@ -25,6 +25,7 @@ See [marketing/SCREENSHOT_GUIDE.md](./marketing/SCREENSHOT_GUIDE.md) for capture
 
 - macOS menu bar app with a compact floating companion bubble
 - Movable Pip bubble with saved position and size controls
+- Assistive Touch-style quick menu for Pip Home, Storage, and desktop actions
 - Emoji avatars or local custom image avatars
 - Anchored message-style panel that opens from the Pip bubble
 - First-time onboarding for name, personality, reminder rhythm, and privacy preference
@@ -88,7 +89,13 @@ src/preload.js           Safe IPC bridge exposed to renderer windows
 src/panel.html           Compact control panel shell
 src/panel.js             Onboarding, dashboard, reminders, settings, About, Reset
 src/bubble.html          Floating companion bubble shell
-src/bubble.js            Bubble popup behavior and panel toggle
+src/bubble.js            Bubble popup behavior and quick menu toggle
+src/quick-menu.html      Assistive Touch-style quick menu shell
+src/quick-menu.js        Quick menu behavior
+src/assistant.html       Pip Assistant placeholder shell
+src/assistant.js         Pip Assistant placeholder behavior
+src/storage-shelf.html   Quick Storage shelf shell
+src/storage-shelf.js     Quick Storage shelf behavior
 src/storage-prompt.html  Quick Storage prompt shell
 src/storage-prompt.js    Quick Storage prompt behavior
 src/styles.css           Shared premium dark theme and CSS avatars
@@ -99,3 +106,7 @@ src/storage.js           Local JSON persistence helper
 ## Release Notes
 
 See [CHANGELOG.md](./CHANGELOG.md).
+
+## Roadmap
+
+- Local assistant planned as optional offline model support.

@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('pipAPI', {
   dropStorageFiles: (paths) => ipcRenderer.invoke('storage:dropFiles', paths),
   getStoragePrompt: () => ipcRenderer.invoke('storage:getPrompt'),
   answerStoragePrompt: (action) => ipcRenderer.invoke('storage:answerPrompt', action),
+  startStorageDrag: (payload) => ipcRenderer.send('storage:startDrag', payload),
+  showStorageShelfMenu: (payload) => ipcRenderer.invoke('storage:shelfMenu', payload),
   openStorageFile: (payload) => ipcRenderer.invoke('storage:open', payload),
   revealStorageFile: (payload) => ipcRenderer.invoke('storage:reveal', payload),
   deleteStorageFile: (payload) => ipcRenderer.invoke('storage:delete', payload),
@@ -42,5 +44,10 @@ contextBridge.exposeInMainWorld('pipAPI', {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('storage-prompt:changed', listener);
     return () => ipcRenderer.removeListener('storage-prompt:changed', listener);
+  },
+  onShelfAnchorChanged: (callback) => {
+    const listener = (_event, side) => callback(side);
+    ipcRenderer.on('shelf:anchor', listener);
+    return () => ipcRenderer.removeListener('shelf:anchor', listener);
   }
 });

@@ -607,6 +607,9 @@ function createStoragePromptWindow() {
   });
 
   storagePromptWindow.loadFile(path.join(__dirname, 'storage-prompt.html'));
+  storagePromptWindow.webContents.on('did-finish-load', () => {
+    broadcastStoragePrompt();
+  });
   storagePromptWindow.on('blur', () => {
     if (storagePrompt && storagePrompt.kind === 'drop') {
       closeStoragePrompt();
@@ -652,6 +655,10 @@ function createPanelWindow() {
   });
 
   panelWindow.loadFile(path.join(__dirname, 'panel.html'));
+  panelWindow.webContents.on('did-finish-load', () => {
+    sendPanelAnchor();
+    broadcastState();
+  });
   panelWindow.on('blur', () => {
     if (panelWindow && panelWindow.isVisible()) {
       hidePanel();
@@ -1431,6 +1438,10 @@ function registerIpc() {
         setNotice('Pip could not open that file.', 'warning');
         broadcastState();
       }
+    } else if (item && (kind === 'temp' || kind === 'permanent')) {
+      deleteQuickStorageItem(kind, id);
+      setNotice('That stored file is no longer available.', 'warning');
+      saveState();
     }
     return publicState();
   });
@@ -1439,6 +1450,10 @@ function registerIpc() {
     const item = state.quickStorage[kind] && state.quickStorage[kind].find((entry) => entry.id === id);
     if (item && fs.existsSync(item.storedPath)) {
       shell.showItemInFolder(item.storedPath);
+    } else if (item && (kind === 'temp' || kind === 'permanent')) {
+      deleteQuickStorageItem(kind, id);
+      setNotice('That stored file is no longer available.', 'warning');
+      saveState();
     }
     return publicState();
   });

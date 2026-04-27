@@ -6,7 +6,7 @@ It is built for people who want a calm reminder layer on their desktop without a
 
 ## Status
 
-Pip is currently a public `v0.1.0` beta. Expect a focused, local-first desktop app rather than a fully polished commercial release.
+Pip is currently moving through a `v0.2.0` beta branch. Expect a focused, local-first desktop app rather than a fully polished commercial release.
 
 ## Screenshots
 
@@ -24,6 +24,9 @@ See [marketing/SCREENSHOT_GUIDE.md](./marketing/SCREENSHOT_GUIDE.md) for capture
 ## Features
 
 - macOS menu bar app with a compact floating companion bubble
+- Movable Pip bubble with saved position and size controls
+- Emoji avatars or local custom image avatars
+- Anchored message-style panel that opens from the Pip bubble
 - First-time onboarding for name, personality, reminder rhythm, and privacy preference
 - CSS-based companion avatars for each personality
 - Today dashboard with:
@@ -32,6 +35,11 @@ See [marketing/SCREENSHOT_GUIDE.md](./marketing/SCREENSHOT_GUIDE.md) for capture
   - missed quiet-mode count
   - quick actions for Water, Eye Break, Stretch, and Motivate Me
 - Local reminders for pills, birthdays, tasks, and custom items
+- Apple-style compact reminder time picker
+- Quick Storage for files dropped onto Pip:
+  - Temp 24h storage with local cleanup reminders
+  - Permanent local storage
+  - Open, reveal in Finder, delete, and move-to-permanent actions
 - Warm local message banks for hydration, eye breaks, stretching, and motivation
 - Native Electron notifications
 - Private Mode for generic notification titles and bodies
@@ -47,7 +55,7 @@ Pip is local-first:
 - No cloud sync
 - No remote database
 - No AI service dependency
-- Settings and reminders are stored locally in Electron's `userData` folder
+- Settings, reminders, avatar images, and Quick Storage files are stored locally in Electron's `userData` folder
 
 See [SECURITY_AND_PRIVACY.md](./SECURITY_AND_PRIVACY.md) for more detail.
 
@@ -60,7 +68,7 @@ npm install
 npm start
 ```
 
-On first launch, Pip opens onboarding. After setup, the floating bubble stays near the bottom-right of the active display.
+On first launch, Pip opens onboarding. After setup, the floating bubble can be moved and will restore its saved position.
 
 ## Build the macOS DMG
 
@@ -81,6 +89,8 @@ src/panel.html           Compact control panel shell
 src/panel.js             Onboarding, dashboard, reminders, settings, About, Reset
 src/bubble.html          Floating companion bubble shell
 src/bubble.js            Bubble popup behavior and panel toggle
+src/storage-prompt.html  Quick Storage prompt shell
+src/storage-prompt.js    Quick Storage prompt behavior
 src/styles.css           Shared premium dark theme and CSS avatars
 src/messages.js          Hardcoded personality message bank
 src/storage.js           Local JSON persistence helper

@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.2.0 beta
+
+Pip v0.2 moves the app toward a more minimal desktop companion.
+
+- Added a movable floating Pip bubble with saved position
+- Added Small, Medium, and Large bubble sizes
+- Added emoji or local custom image avatar options
+- Added anchored panel and Quick Storage prompt styling so Pip feels like it speaks from the bubble
+- Added local Quick Storage for temporary and permanent files
+- Added 24-hour temporary storage reminders and cleanup
+- Added Quick Storage actions: open, reveal in Finder, delete, and move to permanent
+- Added a compact Apple-style reminder time picker
+- Improved app identity so packaged builds show Pip instead of Electron
+- Refined dashboard, onboarding, settings, and bubble UI copy
+
 ## v0.1.0
 
 Initial public beta release of Pip.

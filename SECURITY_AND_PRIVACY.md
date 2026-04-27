@@ -1,6 +1,6 @@
 # Security and Privacy
 
-Pip v0.1.0 is designed as a local-first macOS desktop app.
+Pip v0.2.0 beta is designed as a local-first macOS desktop app.
 
 ## Data Stored Locally
 
@@ -16,7 +16,7 @@ Pip stores local settings and reminders in Electron's `userData` folder as JSON.
 
 ## No Cloud Sync
 
-Pip does not sync data to a server. There is no remote database in v0.1.0.
+Pip does not sync data to a server. There is no remote database in v0.2.0 beta.
 
 ## Quick Storage
 

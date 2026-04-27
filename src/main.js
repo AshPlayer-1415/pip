@@ -26,7 +26,10 @@ const BUBBLE_SIZES = {
 };
 const PANEL_SIZE = { width: 420, height: 640 };
 const PANEL_GAP = 14;
+const SHELF_SIZE = { width: 214, height: 108 };
+const SHELF_GAP = 8;
 const CHECK_INTERVAL_MS = 30 * 1000;
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff', '.heic']);
 
 const defaultState = {
   onboardingComplete: false,
@@ -61,12 +64,14 @@ let tray;
 let bubbleWindow;
 let panelWindow;
 let storagePromptWindow;
+let shelfWindow;
 let scheduler;
 let lastReminderCheckAt;
 let appNotice = null;
 let storagePrompt = null;
 let panelAnchorSide = 'right';
 let storagePromptAnchorSide = 'right';
+let shelfAnchorSide = 'right';
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -108,6 +113,7 @@ function saveState() {
     setNotice(store.getLastError() || 'Pip could not save changes locally.', 'error');
   }
   broadcastState();
+  updateShelfVisibility();
   buildTrayMenu();
 }
 
@@ -349,6 +355,7 @@ function publicState() {
       privacy: 'Local-first. No account. No cloud sync.'
     },
     notice: appNotice,
+    quickStorageShelf: getQuickStorageShelfItems(),
     today: {
       mode: getModeSummary(),
       nextReminder: getNextReminder(),
@@ -360,10 +367,16 @@ function publicState() {
 
 function broadcastState() {
   const snapshot = publicState();
-  for (const win of [bubbleWindow, panelWindow]) {
+  for (const win of [bubbleWindow, panelWindow, shelfWindow]) {
     if (win && !win.isDestroyed()) {
       win.webContents.send('state:changed', snapshot);
     }
+  }
+}
+
+function sendShelfAnchor() {
+  if (shelfWindow && !shelfWindow.isDestroyed()) {
+    shelfWindow.webContents.send('shelf:anchor', shelfAnchorSide);
   }
 }
 
@@ -463,6 +476,7 @@ function positionBubble() {
     x: position.x,
     y: position.y
   });
+  positionShelf();
   positionStoragePrompt();
   if (panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
     positionPanel();
@@ -559,6 +573,113 @@ function createBubbleWindow() {
   bubbleWindow.once('ready-to-show', () => {
     positionBubble();
     bubbleWindow.showInactive();
+  });
+}
+
+function getQuickStorageShelfItems() {
+  const tempItems = state.quickStorage.temp
+    .filter((item) => item.storedPath && fs.existsSync(item.storedPath))
+    .sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0))
+    .map((item) => ({ ...item, kind: 'temp' }));
+  const permanentItems = state.quickStorage.permanent
+    .filter((item) => item.storedPath && fs.existsSync(item.storedPath))
+    .sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0))
+    .map((item) => ({ ...item, kind: 'permanent' }));
+
+  return [...tempItems, ...permanentItems].slice(0, 4).map((item) => {
+    const extension = path.extname(item.filename || item.storedPath).toLowerCase();
+    const isImage = IMAGE_EXTENSIONS.has(extension);
+    return {
+      id: item.id,
+      kind: item.kind,
+      filename: item.filename,
+      isImage,
+      previewUrl: isImage ? pathToFileURL(item.storedPath).toString() : null,
+      addedAt: item.addedAt,
+      expiresAt: item.expiresAt
+    };
+  });
+}
+
+function findQuickStorageItem(kind, id) {
+  if (kind !== 'temp' && kind !== 'permanent') {
+    return null;
+  }
+
+  return state.quickStorage[kind].find((entry) => entry.id === id) || null;
+}
+
+function positionShelf() {
+  if (!shelfWindow || shelfWindow.isDestroyed() || !bubbleWindow || bubbleWindow.isDestroyed()) {
+    return;
+  }
+
+  const items = getQuickStorageShelfItems();
+  if (!items.length) {
+    shelfWindow.hide();
+    return;
+  }
+
+  const bubbleBounds = bubbleWindow.getBounds();
+  const bubbleCenterX = bubbleBounds.x + bubbleBounds.width / 2;
+  const bubbleCenterY = bubbleBounds.y + bubbleBounds.height / 2;
+  const workArea = displayForPoint(bubbleCenterX, bubbleCenterY).workArea;
+  const availableLeft = bubbleBounds.x - workArea.x;
+  const availableRight = workArea.x + workArea.width - (bubbleBounds.x + bubbleBounds.width);
+  const side = availableLeft >= SHELF_SIZE.width + SHELF_GAP || availableLeft >= availableRight ? 'right' : 'left';
+  const rawX = side === 'right'
+    ? bubbleBounds.x - SHELF_SIZE.width - SHELF_GAP
+    : bubbleBounds.x + bubbleBounds.width + SHELF_GAP;
+  const rawY = bubbleCenterY - SHELF_SIZE.height / 2;
+
+  shelfAnchorSide = side;
+  shelfWindow.setBounds({
+    width: SHELF_SIZE.width,
+    height: SHELF_SIZE.height,
+    x: Math.round(Math.min(Math.max(rawX, workArea.x), workArea.x + workArea.width - SHELF_SIZE.width)),
+    y: Math.round(Math.min(Math.max(rawY, workArea.y), workArea.y + workArea.height - SHELF_SIZE.height))
+  });
+  sendShelfAnchor();
+}
+
+function updateShelfVisibility() {
+  if (!shelfWindow || shelfWindow.isDestroyed()) {
+    return;
+  }
+
+  positionShelf();
+  if (getQuickStorageShelfItems().length) {
+    shelfWindow.showInactive();
+  } else {
+    shelfWindow.hide();
+  }
+}
+
+function createShelfWindow() {
+  shelfWindow = new BrowserWindow({
+    width: SHELF_SIZE.width,
+    height: SHELF_SIZE.height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  shelfWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  shelfWindow.loadFile(path.join(__dirname, 'storage-shelf.html'));
+  shelfWindow.webContents.on('did-finish-load', () => {
+    sendShelfAnchor();
+    broadcastState();
+    updateShelfVisibility();
   });
 }
 
@@ -1431,7 +1552,7 @@ function registerIpc() {
   });
 
   ipcMain.handle('storage:open', async (_event, { kind, id } = {}) => {
-    const item = state.quickStorage[kind] && state.quickStorage[kind].find((entry) => entry.id === id);
+    const item = findQuickStorageItem(kind, id);
     if (item && fs.existsSync(item.storedPath)) {
       const error = await shell.openPath(item.storedPath);
       if (error) {
@@ -1447,7 +1568,7 @@ function registerIpc() {
   });
 
   ipcMain.handle('storage:reveal', (_event, { kind, id } = {}) => {
-    const item = state.quickStorage[kind] && state.quickStorage[kind].find((entry) => entry.id === id);
+    const item = findQuickStorageItem(kind, id);
     if (item && fs.existsSync(item.storedPath)) {
       shell.showItemInFolder(item.storedPath);
     } else if (item && (kind === 'temp' || kind === 'permanent')) {
@@ -1455,6 +1576,68 @@ function registerIpc() {
       setNotice('That stored file is no longer available.', 'warning');
       saveState();
     }
+    return publicState();
+  });
+
+  ipcMain.on('storage:startDrag', (event, { kind, id } = {}) => {
+    const item = findQuickStorageItem(kind, id);
+    if (!item || !fs.existsSync(item.storedPath)) {
+      if (item && (kind === 'temp' || kind === 'permanent')) {
+        deleteQuickStorageItem(kind, id);
+        setNotice('That stored file is no longer available.', 'warning');
+        saveState();
+      }
+      return;
+    }
+
+    const icon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png'));
+    try {
+      event.sender.startDrag({
+        file: item.storedPath,
+        icon: icon.isEmpty() ? nativeImage.createEmpty() : icon
+      });
+    } catch (error) {
+      console.error('Unable to start Quick Storage drag:', error);
+      shell.showItemInFolder(item.storedPath);
+    }
+  });
+
+  ipcMain.handle('storage:shelfMenu', (event, { kind, id } = {}) => {
+    const item = findQuickStorageItem(kind, id);
+    if (!item || !fs.existsSync(item.storedPath)) {
+      if (item && (kind === 'temp' || kind === 'permanent')) {
+        deleteQuickStorageItem(kind, id);
+        setNotice('That stored file is no longer available.', 'warning');
+        saveState();
+      }
+      return publicState();
+    }
+
+    const sourceWindow = BrowserWindow.fromWebContents(event.sender);
+    Menu.buildFromTemplate([
+      {
+        label: 'Reveal in Finder',
+        click: () => shell.showItemInFolder(item.storedPath)
+      },
+      {
+        label: 'Open',
+        click: async () => {
+          const error = await shell.openPath(item.storedPath);
+          if (error) {
+            setNotice('Pip could not open that file.', 'warning');
+            broadcastState();
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Delete from Quick Storage',
+        click: () => {
+          deleteQuickStorageItem(kind, id);
+          saveState();
+        }
+      }
+    ]).popup({ window: sourceWindow });
     return publicState();
   });
 
@@ -1536,10 +1719,12 @@ app.whenReady().then(() => {
 
   registerIpc();
   createBubbleWindow();
+  createShelfWindow();
   createPanelWindow();
   createStoragePromptWindow();
   screen.on('display-metrics-changed', () => {
     positionBubble();
+    positionShelf();
     positionPanel();
     positionStoragePrompt();
   });

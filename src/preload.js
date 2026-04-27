@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('pipAPI', {
   getState: () => ipcRenderer.invoke('app:getState'),
@@ -10,6 +10,14 @@ contextBridge.exposeInMainWorld('pipAPI', {
   setBubbleExpanded: (expanded) => ipcRenderer.invoke('bubble:setExpanded', expanded),
   setBubblePosition: (payload) => ipcRenderer.invoke('bubble:setPosition', payload),
   chooseCustomAvatar: () => ipcRenderer.invoke('avatar:chooseCustom'),
+  getFilePath: (file) => webUtils.getPathForFile(file),
+  dropStorageFiles: (paths) => ipcRenderer.invoke('storage:dropFiles', paths),
+  getStoragePrompt: () => ipcRenderer.invoke('storage:getPrompt'),
+  answerStoragePrompt: (action) => ipcRenderer.invoke('storage:answerPrompt', action),
+  openStorageFile: (payload) => ipcRenderer.invoke('storage:open', payload),
+  revealStorageFile: (payload) => ipcRenderer.invoke('storage:reveal', payload),
+  deleteStorageFile: (payload) => ipcRenderer.invoke('storage:delete', payload),
+  moveStoragePermanent: (id) => ipcRenderer.invoke('storage:movePermanent', id),
   previewOnboarding: (payload) => ipcRenderer.invoke('settings:previewOnboarding', payload),
   completeOnboarding: (payload) => ipcRenderer.invoke('settings:completeOnboarding', payload),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
@@ -24,5 +32,10 @@ contextBridge.exposeInMainWorld('pipAPI', {
     const listener = (_event, state) => callback(state);
     ipcRenderer.on('state:changed', listener);
     return () => ipcRenderer.removeListener('state:changed', listener);
+  },
+  onStoragePromptChanged: (callback) => {
+    const listener = (_event, prompt) => callback(prompt);
+    ipcRenderer.on('storage-prompt:changed', listener);
+    return () => ipcRenderer.removeListener('storage-prompt:changed', listener);
   }
 });

@@ -10,6 +10,7 @@ const {
   Menu,
   nativeImage,
   Notification,
+  shell,
   Tray,
   screen
 } = require('electron');
@@ -38,6 +39,10 @@ const defaultState = {
     avatarMode: 'emoji',
     customAvatarPath: null
   },
+  quickStorage: {
+    temp: [],
+    permanent: []
+  },
   missedQueue: [],
   currentNudge: null,
   nudges: {
@@ -54,9 +59,11 @@ let state;
 let tray;
 let bubbleWindow;
 let panelWindow;
+let storagePromptWindow;
 let scheduler;
 let lastReminderCheckAt;
 let appNotice = null;
+let storagePrompt = null;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -254,6 +261,12 @@ function normalizeState(nextState) {
   normalized.appearance.bubblePosition = normalized.appearance.bubblePosition
     ? clampBubblePosition(normalized.appearance.bubblePosition, normalized.appearance.bubbleSize)
     : null;
+  normalized.quickStorage.temp = Array.isArray(normalized.quickStorage.temp)
+    ? normalized.quickStorage.temp.filter((item) => item && item.storedPath && fs.existsSync(item.storedPath))
+    : [];
+  normalized.quickStorage.permanent = Array.isArray(normalized.quickStorage.permanent)
+    ? normalized.quickStorage.permanent.filter((item) => item && item.storedPath && fs.existsSync(item.storedPath))
+    : [];
 
   for (const key of NUDGE_KEYS) {
     const config = normalized.nudges[key];
@@ -339,6 +352,12 @@ function broadcastState() {
   }
 }
 
+function broadcastStoragePrompt() {
+  if (storagePromptWindow && !storagePromptWindow.isDestroyed()) {
+    storagePromptWindow.webContents.send('storage-prompt:changed', storagePrompt);
+  }
+}
+
 function createTrayImage() {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
@@ -420,6 +439,7 @@ function positionBubble() {
     x: position.x,
     y: position.y
   });
+  positionStoragePrompt();
 }
 
 function positionPanel() {
@@ -464,6 +484,75 @@ function createBubbleWindow() {
     positionBubble();
     bubbleWindow.showInactive();
   });
+}
+
+function positionStoragePrompt() {
+  if (!storagePromptWindow || storagePromptWindow.isDestroyed() || !bubbleWindow || bubbleWindow.isDestroyed()) {
+    return;
+  }
+
+  const promptWidth = 286;
+  const promptHeight = 190;
+  const bubbleBounds = bubbleWindow.getBounds();
+  const display = displayForPoint(bubbleBounds.x + bubbleBounds.width / 2, bubbleBounds.y + bubbleBounds.height / 2);
+  const workArea = display.workArea;
+  const preferredX = bubbleBounds.x - promptWidth - 12;
+  const fallbackX = bubbleBounds.x + bubbleBounds.width + 12;
+  const preferredY = bubbleBounds.y - Math.round((promptHeight - bubbleBounds.height) / 2);
+
+  const x = preferredX >= workArea.x ? preferredX : fallbackX;
+  storagePromptWindow.setBounds({
+    width: promptWidth,
+    height: promptHeight,
+    x: Math.round(Math.min(Math.max(x, workArea.x), workArea.x + workArea.width - promptWidth)),
+    y: Math.round(Math.min(Math.max(preferredY, workArea.y), workArea.y + workArea.height - promptHeight))
+  });
+}
+
+function closeStoragePrompt() {
+  storagePrompt = null;
+  if (storagePromptWindow && !storagePromptWindow.isDestroyed()) {
+    storagePromptWindow.hide();
+    broadcastStoragePrompt();
+  }
+}
+
+function createStoragePromptWindow() {
+  storagePromptWindow = new BrowserWindow({
+    width: 286,
+    height: 190,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  storagePromptWindow.loadFile(path.join(__dirname, 'storage-prompt.html'));
+  storagePromptWindow.on('blur', () => {
+    if (storagePrompt && storagePrompt.kind === 'drop') {
+      closeStoragePrompt();
+    }
+  });
+}
+
+function showStoragePrompt(prompt) {
+  storagePrompt = prompt;
+  if (!storagePromptWindow || storagePromptWindow.isDestroyed()) {
+    createStoragePromptWindow();
+  }
+
+  positionStoragePrompt();
+  storagePromptWindow.showInactive();
+  broadcastStoragePrompt();
 }
 
 function createPanelWindow() {
@@ -724,11 +813,13 @@ function checkReminders() {
 function runScheduler() {
   if (!state.onboardingComplete) {
     lastReminderCheckAt = new Date();
+    checkQuickStorage();
     return;
   }
 
   checkReminders();
   checkNudges();
+  checkQuickStorage();
 }
 
 function scheduleChecks() {
@@ -809,11 +900,205 @@ function copyCustomAvatar(sourcePath) {
   return destination;
 }
 
+function quickStorageDirectory(kind) {
+  return path.join(app.getPath('userData'), 'quick-storage', kind);
+}
+
+function sanitizeFilename(name) {
+  return String(name || 'file').replace(/[/:\\?%*"<>|]/g, '-').slice(0, 120) || 'file';
+}
+
+function copyQuickStorageFile(sourcePath, kind) {
+  const stat = fs.statSync(sourcePath);
+  if (!stat.isFile()) {
+    throw new Error('Only files can be stored in Quick Storage.');
+  }
+
+  const directory = quickStorageDirectory(kind);
+  fs.mkdirSync(directory, { recursive: true });
+  const id = randomUUID();
+  const filename = sanitizeFilename(path.basename(sourcePath));
+  const storedPath = path.join(directory, `${id}-${filename}`);
+  fs.copyFileSync(sourcePath, storedPath);
+  const addedAt = new Date().toISOString();
+  return {
+    id,
+    filename,
+    originalPath: sourcePath,
+    storedPath,
+    addedAt,
+    expiresAt: kind === 'temp' ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null,
+    reminderCount: 0,
+    nextReminderAt: null,
+    awaitingExpiryResponse: false
+  };
+}
+
+function removeQuickStorageFile(item) {
+  if (item && item.storedPath) {
+    fs.rmSync(item.storedPath, { force: true });
+  }
+}
+
+function deleteQuickStorageItem(kind, id) {
+  const list = state.quickStorage[kind];
+  if (!Array.isArray(list)) {
+    return false;
+  }
+
+  const item = list.find((entry) => entry.id === id);
+  if (!item) {
+    return false;
+  }
+
+  removeQuickStorageFile(item);
+  state.quickStorage[kind] = list.filter((entry) => entry.id !== id);
+  return true;
+}
+
+function moveQuickStorageItemToPermanent(id) {
+  const item = state.quickStorage.temp.find((entry) => entry.id === id);
+  if (!item) {
+    return false;
+  }
+
+  const directory = quickStorageDirectory('permanent');
+  fs.mkdirSync(directory, { recursive: true });
+  const storedPath = path.join(directory, `${randomUUID()}-${sanitizeFilename(item.filename)}`);
+  fs.renameSync(item.storedPath, storedPath);
+  state.quickStorage.temp = state.quickStorage.temp.filter((entry) => entry.id !== id);
+  state.quickStorage.permanent.unshift({
+    ...item,
+    id: randomUUID(),
+    storedPath,
+    expiresAt: null,
+    reminderCount: 0,
+    nextReminderAt: null,
+    awaitingExpiryResponse: false
+  });
+  return true;
+}
+
+function addQuickStorageFiles(paths, kind) {
+  const copied = [];
+  for (const sourcePath of paths) {
+    try {
+      copied.push(copyQuickStorageFile(sourcePath, kind));
+    } catch (error) {
+      console.error('Unable to add Quick Storage file:', error);
+      setNotice('Pip could not store one of those files.', 'warning');
+    }
+  }
+
+  if (copied.length) {
+    state.quickStorage[kind].unshift(...copied);
+    saveState();
+  } else {
+    broadcastState();
+  }
+}
+
+function showDropStoragePrompt(paths) {
+  const validPaths = paths.filter((filePath) => {
+    try {
+      return filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+    } catch {
+      return false;
+    }
+  });
+
+  if (!validPaths.length) {
+    setNotice('Drop a file onto Pip to save it.', 'warning');
+    broadcastState();
+    return;
+  }
+
+  showStoragePrompt({
+    id: randomUUID(),
+    kind: 'drop',
+    paths: validPaths,
+    title: validPaths.length === 1 ? 'Save this to Quick Storage?' : `Save ${validPaths.length} files to Quick Storage?`,
+    detail: validPaths.length === 1 ? path.basename(validPaths[0]) : 'Files stay local on this Mac.',
+    actions: [
+      { id: 'temp', label: 'Temp 24h' },
+      { id: 'permanent', label: 'Permanent' },
+      { id: 'cancel', label: 'Cancel' }
+    ]
+  });
+}
+
+function showTempExpiryPrompt(item) {
+  showStoragePrompt({
+    id: randomUUID(),
+    kind: 'temp-expiry',
+    itemId: item.id,
+    title: 'Still need this file?',
+    detail: item.filename,
+    actions: [
+      { id: 'keep', label: 'Keep 24h more' },
+      { id: 'permanent', label: 'Move to Permanent' },
+      { id: 'delete', label: 'Delete' }
+    ]
+  });
+}
+
+function checkQuickStorage() {
+  const now = Date.now();
+  let changed = false;
+
+  for (const item of [...state.quickStorage.temp]) {
+    if (!fs.existsSync(item.storedPath)) {
+      state.quickStorage.temp = state.quickStorage.temp.filter((entry) => entry.id !== item.id);
+      changed = true;
+      continue;
+    }
+
+    const expiresAt = new Date(item.expiresAt || 0).getTime();
+    const nextReminderAt = item.nextReminderAt ? new Date(item.nextReminderAt).getTime() : 0;
+    if (!Number.isFinite(expiresAt) || now < expiresAt) {
+      continue;
+    }
+
+    if (item.awaitingExpiryResponse && nextReminderAt && now >= nextReminderAt) {
+      item.awaitingExpiryResponse = false;
+      if (item.reminderCount >= 3) {
+        deleteQuickStorageItem('temp', item.id);
+      } else {
+        item.nextReminderAt = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+      }
+      changed = true;
+      closeStoragePrompt();
+      continue;
+    }
+
+    if (!item.awaitingExpiryResponse && (!nextReminderAt || now >= nextReminderAt)) {
+      if (item.reminderCount >= 3) {
+        deleteQuickStorageItem('temp', item.id);
+        changed = true;
+        continue;
+      }
+
+      if (!storagePrompt) {
+        item.reminderCount += 1;
+        item.awaitingExpiryResponse = true;
+        item.nextReminderAt = new Date(now + 10 * 60 * 1000).toISOString();
+        showTempExpiryPrompt(item);
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    saveState();
+  }
+}
+
 function resetPip() {
   try {
     fs.rmSync(customAvatarDirectory(), { recursive: true, force: true });
+    fs.rmSync(path.join(app.getPath('userData'), 'quick-storage'), { recursive: true, force: true });
   } catch (error) {
-    console.error('Unable to clear Pip avatar storage:', error);
+    console.error('Unable to clear Pip local storage files:', error);
   }
   state = normalizeState(defaultState);
   lastReminderCheckAt = new Date();
@@ -876,6 +1161,49 @@ function registerIpc() {
     if (payload.persist !== false) {
       saveState();
     }
+    return publicState();
+  });
+  ipcMain.handle('storage:dropFiles', (_event, paths = []) => {
+    showDropStoragePrompt(Array.isArray(paths) ? paths : []);
+    return publicState();
+  });
+  ipcMain.handle('storage:getPrompt', () => storagePrompt);
+  ipcMain.handle('storage:answerPrompt', (_event, action) => {
+    if (!storagePrompt) {
+      return publicState();
+    }
+
+    const prompt = storagePrompt;
+    closeStoragePrompt();
+
+    if (prompt.kind === 'drop') {
+      if (action === 'temp') {
+        addQuickStorageFiles(prompt.paths, 'temp');
+      } else if (action === 'permanent') {
+        addQuickStorageFiles(prompt.paths, 'permanent');
+      }
+      return publicState();
+    }
+
+    if (prompt.kind === 'temp-expiry') {
+      const item = state.quickStorage.temp.find((entry) => entry.id === prompt.itemId);
+      if (!item) {
+        return publicState();
+      }
+
+      if (action === 'keep') {
+        item.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        item.awaitingExpiryResponse = false;
+        item.nextReminderAt = null;
+        item.reminderCount = 0;
+      } else if (action === 'permanent') {
+        moveQuickStorageItemToPermanent(item.id);
+      } else if (action === 'delete') {
+        deleteQuickStorageItem('temp', item.id);
+      }
+      saveState();
+    }
+
     return publicState();
   });
 
@@ -1016,6 +1344,40 @@ function registerIpc() {
     return publicState();
   });
 
+  ipcMain.handle('storage:open', async (_event, { kind, id } = {}) => {
+    const item = state.quickStorage[kind] && state.quickStorage[kind].find((entry) => entry.id === id);
+    if (item && fs.existsSync(item.storedPath)) {
+      const error = await shell.openPath(item.storedPath);
+      if (error) {
+        setNotice('Pip could not open that file.', 'warning');
+        broadcastState();
+      }
+    }
+    return publicState();
+  });
+
+  ipcMain.handle('storage:reveal', (_event, { kind, id } = {}) => {
+    const item = state.quickStorage[kind] && state.quickStorage[kind].find((entry) => entry.id === id);
+    if (item && fs.existsSync(item.storedPath)) {
+      shell.showItemInFolder(item.storedPath);
+    }
+    return publicState();
+  });
+
+  ipcMain.handle('storage:delete', (_event, { kind, id } = {}) => {
+    if (kind === 'temp' || kind === 'permanent') {
+      deleteQuickStorageItem(kind, id);
+      saveState();
+    }
+    return publicState();
+  });
+
+  ipcMain.handle('storage:movePermanent', (_event, id) => {
+    moveQuickStorageItemToPermanent(id);
+    saveState();
+    return publicState();
+  });
+
   ipcMain.handle('reminders:add', (_event, payload = {}) => {
     const reminder = sanitizeReminder(payload);
     if (!reminder) {
@@ -1081,9 +1443,11 @@ app.whenReady().then(() => {
   registerIpc();
   createBubbleWindow();
   createPanelWindow();
+  createStoragePromptWindow();
   screen.on('display-metrics-changed', () => {
     positionBubble();
     positionPanel();
+    positionStoragePrompt();
   });
 
   scheduleChecks();

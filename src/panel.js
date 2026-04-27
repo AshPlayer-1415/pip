@@ -49,6 +49,24 @@ function defaultReminderTime() {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+function formatStorageDate(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
 function selectedPersonalityMeta(id) {
   return state.personalityOptions.find((option) => option.id === id) || state.personalityOptions[0] || state.personalityMeta;
 }
@@ -380,6 +398,59 @@ function renderReminders() {
   `;
 }
 
+function renderStorageList(kind, items) {
+  if (!items.length) {
+    return '<p class="empty-copy">Empty.</p>';
+  }
+
+  return `
+    <div class="list">
+      ${items.map((item) => `
+        <div class="list-item storage-item">
+          <div class="item-main">
+            <p class="item-title">${escapeHtml(item.filename)}</p>
+            <div class="item-meta">${kind === 'temp' ? `Until ${escapeHtml(formatStorageDate(item.expiresAt))}` : `Saved ${escapeHtml(formatStorageDate(item.addedAt))}`}</div>
+          </div>
+          <div class="button-row storage-actions">
+            <button class="button" data-storage-open="${escapeHtml(item.id)}" data-kind="${kind}" type="button">Open</button>
+            <button class="button" data-storage-reveal="${escapeHtml(item.id)}" data-kind="${kind}" type="button">Show</button>
+            ${kind === 'temp' ? `<button class="button" data-storage-move="${escapeHtml(item.id)}" type="button">Move</button>` : ''}
+            <button class="button ghost" data-storage-delete="${escapeHtml(item.id)}" data-kind="${kind}" type="button">Delete</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderQuickStorage() {
+  const quickStorage = state.quickStorage || { temp: [], permanent: [] };
+
+  return `
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Quick Storage</h2>
+        <span class="item-meta">Drop files on Pip</span>
+      </div>
+      <div class="storage-grid">
+        <div class="card storage-card">
+          <div class="section-head">
+            <h3 class="card-title">Temp</h3>
+            <span class="item-meta">24h</span>
+          </div>
+          ${renderStorageList('temp', quickStorage.temp || [])}
+        </div>
+        <div class="card storage-card">
+          <div class="section-head">
+            <h3 class="card-title">Permanent</h3>
+          </div>
+          ${renderStorageList('permanent', quickStorage.permanent || [])}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderAvatarSettings() {
   const appearance = state.appearance || {};
   const isCustom = appearance.avatarMode === 'custom' && appearance.customAvatarUrl;
@@ -431,6 +502,7 @@ function renderDashboard() {
           <button class="button" data-view="add">Add Reminder</button>
           <button class="button" data-view="settings">Settings</button>
         </div>
+        ${renderQuickStorage()}
         ${renderQueue()}
         ${renderReminders()}
       </div>
@@ -739,6 +811,35 @@ app.addEventListener('click', async (event) => {
 
   if (target.dataset.action === 'clearQueue') {
     await refresh(await window.pipAPI.clearQueue());
+    return;
+  }
+
+  if (target.dataset.storageOpen) {
+    await refresh(await window.pipAPI.openStorageFile({
+      kind: target.dataset.kind,
+      id: target.dataset.storageOpen
+    }));
+    return;
+  }
+
+  if (target.dataset.storageReveal) {
+    await refresh(await window.pipAPI.revealStorageFile({
+      kind: target.dataset.kind,
+      id: target.dataset.storageReveal
+    }));
+    return;
+  }
+
+  if (target.dataset.storageDelete) {
+    await refresh(await window.pipAPI.deleteStorageFile({
+      kind: target.dataset.kind,
+      id: target.dataset.storageDelete
+    }));
+    return;
+  }
+
+  if (target.dataset.storageMove) {
+    await refresh(await window.pipAPI.moveStoragePermanent(target.dataset.storageMove));
     return;
   }
 

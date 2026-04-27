@@ -113,5 +113,31 @@ bubble.addEventListener('click', (event) => {
   window.pipAPI.togglePanel();
 });
 
+bubble.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  bubble.classList.add('is-drop-target');
+});
+
+bubble.addEventListener('dragleave', () => {
+  bubble.classList.remove('is-drop-target');
+});
+
+bubble.addEventListener('drop', async (event) => {
+  event.preventDefault();
+  bubble.classList.remove('is-drop-target');
+  const paths = Array.from(event.dataTransfer.files)
+    .map((file) => {
+      try {
+        return window.pipAPI.getFilePath ? window.pipAPI.getFilePath(file) : file.path;
+      } catch {
+        return file.path;
+      }
+    })
+    .filter(Boolean);
+  if (paths.length) {
+    await window.pipAPI.dropStorageFiles(paths);
+  }
+});
+
 window.pipAPI.onStateChanged(applyState);
 window.pipAPI.getState().then(applyState);

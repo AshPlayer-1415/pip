@@ -1,10 +1,10 @@
 {
-  "name": "pip",
-  "productName": "Pip",
-  "version": "0.3.0",
-  "description": "A gentle private macOS desktop companion for reminders, hydration, screen breaks, and motivation.",
+  "name": "winsy-ai",
+  "productName": "Winsy AI",
+  "version": "0.4.0",
+  "description": "A local-first macOS assistant companion for reminders, quick storage, and desktop actions.",
   "main": "src/main.js",
-  "author": "Pip",
+  "author": "Winsy AI",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -12,9 +12,9 @@
     "build:mac": "electron-builder --mac dmg"
   },
   "build": {
-    "appId": "com.pip.desktop",
-    "productName": "Pip",
-    "executableName": "Pip",
+    "appId": "com.winsyai.desktop",
+    "productName": "Winsy AI",
+    "executableName": "Winsy AI",
     "files": [
       "src/**/*",
       "assets/**/*",

@@ -1,16 +1,16 @@
-# Pip Landing Page Copy
+# Winsy AI Landing Page Copy
 
 ## Hero Headline
 
-Meet Pip, a calmer way to remember the small things.
+Meet Winsy AI, a calmer way to remember the small things.
 
 ## Subheadline
 
-A private macOS desktop companion for reminders, hydration nudges, screen breaks, stretching, and motivation. No account, no cloud sync, no AI dependency.
+A local-first macOS assistant companion for reminders, quick storage, and lightweight desktop actions. No account, no cloud sync, and no real AI model or connectors yet.
 
 ## Feature Section 1: A Gentle Desktop Companion
 
-Pip lives in your menu bar and keeps a small companion bubble near the corner of your screen. It is present when useful and quiet when not.
+Winsy AI lives in your menu bar and keeps a small companion bubble near the corner of your screen. It is present when useful and quiet when not.
 
 ## Feature Section 2: Your Day at a Glance
 
@@ -18,26 +18,26 @@ The Today dashboard shows your current mode, next reminder, missed quiet-mode co
 
 ## Feature Section 3: Local Reminders
 
-Create simple reminders for pills, birthdays, tasks, or anything custom. Pip keeps the flow compact and focused.
+Create simple reminders for pills, birthdays, tasks, or anything custom. Winsy AI keeps the flow compact and focused.
 
 ## Feature Section 4: Personalities Without Noise
 
-Choose a companion name, avatar style, and personality tone. Pip's messages are warm, short, and designed to feel supportive rather than distracting.
+Choose a companion name, avatar style, and personality tone. Winsy AI's messages are warm, short, and designed to feel supportive rather than distracting.
 
 ## Feature Section 5: Quiet When You Need It
 
-Snooze nudges for 15 minutes, 1 hour, until tomorrow, or until you turn them back on. Presentation Safe Mode suppresses Pip notifications and bubble popups while you share your screen.
+Snooze nudges for 15 minutes, 1 hour, until tomorrow, or until you turn them back on. Presentation Safe Mode suppresses Winsy AI notifications and bubble popups while you share your screen.
 
 ## Privacy-First Section
 
-Pip is local-first. It does not require an account, does not sync to the cloud, does not use a remote database, and does not depend on AI services. Settings and reminders stay on your Mac.
+Winsy AI is local-first. It does not require an account, does not sync to the cloud, does not use a remote database, and does not include a real AI model or connectors yet. Settings, reminders, and Quick Storage files stay on your Mac.
 
 ## Known Limitations Note
 
-Pip v0.1.0 is a public beta. Presentation Safe Mode is manual, reminders use simple daily times, and the macOS DMG is not notarized unless Apple Developer credentials are configured. See `KNOWN_LIMITATIONS.md` for details.
+Winsy AI v0.4.0 is a public beta. Presentation Safe Mode is manual, reminders use simple daily times, and the macOS DMG is not notarized unless Apple Developer credentials are configured. See `KNOWN_LIMITATIONS.md` for details.
 
 ## Download CTA Copy
 
-Download Pip v0.1.0 for macOS
+Download Winsy AI v0.4.0 for macOS
 
 Try the public beta and help shape a calmer desktop companion.

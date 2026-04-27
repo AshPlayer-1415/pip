@@ -28,7 +28,7 @@ const bubbleSizeLabels = {
 };
 
 const quickActionFallbacks = {
-  assistant: 'Pip Assistant',
+  assistant: 'Winsy Assistant',
   screenshot: 'Screenshot',
   notes: 'Open Notes',
   lock: 'Lock Screen',
@@ -117,7 +117,7 @@ function ensureOnboardingDraft() {
   }
 
   onboardingDraft = {
-    companionName: state.companionName || 'Pip',
+    companionName: state.companionName || 'Winsy',
     personality: state.personality || 'cozy',
     privateMode: Boolean(state.privateMode),
     nudges: cloneState(state.nudges)
@@ -136,7 +136,7 @@ function updateOnboardingDraftFromForm() {
 
   const data = Object.fromEntries(new FormData(form).entries());
   if (data.companionName !== undefined) {
-    onboardingDraft.companionName = String(data.companionName).trim().slice(0, 28) || 'Pip';
+    onboardingDraft.companionName = String(data.companionName).trim().slice(0, 28) || 'Winsy';
   }
 
   for (const key of Object.keys(onboardingDraft.nudges)) {
@@ -174,7 +174,7 @@ function renderTopbar() {
         ${renderAvatar('avatar', meta, '', currentAvatarUrl())}
         <div class="brand-copy">
           <div class="eyebrow">${escapeHtml(meta.label)}</div>
-          <h1 class="title">${escapeHtml(companionName || 'Pip')}</h1>
+          <h1 class="title">${escapeHtml(companionName || 'Winsy')}</h1>
         </div>
       </div>
       <div class="top-actions">
@@ -223,7 +223,7 @@ function renderOnboardingNav(primaryLabel, showBack = true) {
   return `
     <div class="button-row onboarding-nav">
       ${showBack ? '<button class="button ghost" data-action="onboardingBack" type="button">Back</button>' : ''}
-      <button class="button primary" data-action="${primaryLabel === 'Start Pip' ? 'finishOnboarding' : 'onboardingNext'}" type="button">${primaryLabel}</button>
+      <button class="button primary" data-action="${primaryLabel === 'Start Winsy' ? 'finishOnboarding' : 'onboardingNext'}" type="button">${primaryLabel}</button>
     </div>
   `;
 }
@@ -265,7 +265,7 @@ function renderOnboarding() {
       <div class="onboarding-card">
         ${renderAvatar('avatar hero-avatar', selectedMeta)}
         <div>
-          <h1>Meet Pip</h1>
+          <h1>Meet Winsy</h1>
           <p>Small reminders. Quiet presence.</p>
         </div>
         ${renderOnboardingNav('Get started', false)}
@@ -301,7 +301,7 @@ function renderOnboarding() {
           <p>Start gentle.</p>
         </div>
         ${renderOnboardingPreferences()}
-        ${renderOnboardingNav('Start Pip')}
+        ${renderOnboardingNav('Start Winsy')}
       </form>
     `
   ];
@@ -501,7 +501,7 @@ function renderQuickStorage() {
     <section class="section">
       <div class="section-head">
         <h2 class="section-title">Quick Storage</h2>
-        <span class="item-meta">Drop files on Pip</span>
+        <span class="item-meta">Drop files on Winsy</span>
       </div>
       <div class="storage-grid">
         <div class="card storage-card">
@@ -531,7 +531,7 @@ function renderAvatarSettings() {
     <div class="card form">
       <div class="section-head">
         <div>
-          <h3 class="card-title">Pip Bubble</h3>
+          <h3 class="card-title">Winsy Bubble</h3>
           <p class="empty-copy">Size and avatar.</p>
         </div>
         ${renderAvatar('avatar', meta, '', isCustom ? appearance.customAvatarUrl : null)}
@@ -581,7 +581,7 @@ function renderQuickMenuSettings() {
         </div>
       </div>
       <div class="quick-menu-fixed">
-        <span>Pip Home</span>
+        <span>Winsy Home</span>
         <span>Storage</span>
       </div>
       ${Array.from({ length: slotCount }).map((_item, index) => `
@@ -692,7 +692,7 @@ function renderSettings() {
           <div class="card form">
             <label class="field">
               <span>Name</span>
-              <input class="input" name="companionName" maxlength="28" value="${escapeHtml(state.companionName || 'Pip')}" />
+              <input class="input" name="companionName" maxlength="28" value="${escapeHtml(state.companionName || 'Winsy')}" />
             </label>
             <div class="field">
               <label>Personality</label>
@@ -736,7 +736,7 @@ function renderSettings() {
 
           <section class="card form">
             <div>
-              <h3 class="card-title">About Pip</h3>
+              <h3 class="card-title">About Winsy AI</h3>
               <p class="empty-copy">${escapeHtml(state.appInfo.name)} ${escapeHtml(state.appInfo.version)}</p>
               <p class="empty-copy">${escapeHtml(state.appInfo.description)}</p>
               <p class="empty-copy">${escapeHtml(state.appInfo.privacy)}</p>
@@ -745,15 +745,15 @@ function renderSettings() {
 
           <section class="card form danger-zone">
             <div>
-              <h3 class="card-title">Reset Pip</h3>
+              <h3 class="card-title">Reset Winsy AI</h3>
               <p class="empty-copy">Clears local settings and reminders, then returns to onboarding.</p>
             </div>
             ${resetConfirming ? `
               <div class="button-row">
-                <button class="button danger" data-action="confirmReset" type="button">Reset Pip</button>
+                <button class="button danger" data-action="confirmReset" type="button">Reset Winsy AI</button>
                 <button class="button ghost" data-action="cancelReset" type="button">Cancel</button>
               </div>
-            ` : '<button class="button danger" data-action="beginReset" type="button">Reset Pip</button>'}
+            ` : '<button class="button danger" data-action="beginReset" type="button">Reset Winsy AI</button>'}
           </section>
 
           <button class="button primary" type="submit">Save Settings</button>

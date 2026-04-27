@@ -21,8 +21,8 @@ function createStore(app) {
       const parsed = JSON.parse(raw);
       return parsed && typeof parsed === 'object' ? parsed : clone(defaultState);
     } catch (error) {
-      console.error('Unable to read Pip store:', error);
-      lastError = 'Pip could not read local settings, so defaults were loaded.';
+      console.error('Unable to read Winsy AI store:', error);
+      lastError = 'Winsy AI could not read local settings, so defaults were loaded.';
       return clone(defaultState);
     }
   }
@@ -35,14 +35,14 @@ function createStore(app) {
       fs.renameSync(tempPath, filePath);
       return true;
     } catch (error) {
-      console.error('Unable to write Pip store:', error);
-      lastError = 'Pip could not save changes locally.';
+      console.error('Unable to write Winsy AI store:', error);
+      lastError = 'Winsy AI could not save changes locally.';
       try {
         if (fs.existsSync(tempPath)) {
           fs.unlinkSync(tempPath);
         }
       } catch (cleanupError) {
-        console.error('Unable to clean Pip temp store:', cleanupError);
+        console.error('Unable to clean Winsy AI temp store:', cleanupError);
       }
       return false;
     }

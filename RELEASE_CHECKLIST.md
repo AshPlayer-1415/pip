@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist before publishing a Pip v0.1.0 beta build.
+Use this checklist before publishing a Winsy AI beta build.
 
 ## Install Test
 
@@ -41,12 +41,12 @@ Use this checklist before publishing a Pip v0.1.0 beta build.
 ## Reset Test
 
 - Open Settings
-- Use Reset Pip
+- Use Reset Winsy AI
 - Confirm the confirmation step appears
 - Confirm local reminders/settings clear and onboarding returns
 
 ## DMG Build Test
 
 - Run `npm run build:mac`
-- Confirm `dist/Pip-0.1.0-arm64.dmg` is produced
+- Confirm `dist/Winsy AI-0.4.0-arm64.dmg` is produced
 - Install from the DMG on a clean macOS user account when possible

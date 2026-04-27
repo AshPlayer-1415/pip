@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.4.0 beta
+
+Winsy AI v0.4 is a rebrand and stability release before real AI is added.
+
+- Rebranded Pip to Winsy AI
+- Changed the default assistant name to Winsy
+- Added local app-data migration from the old Pip support folder when possible
+- Updated app title, menu labels, About metadata, package metadata, and DMG naming
+- Stabilized floating windows across app switching and macOS spaces
+- Improved quick menu reliability from the floating bubble
+- Polished the home panel, quick menu, and storage prompt glass styling
+- Improved long filename truncation in Quick Storage prompts
+- Replaced letter-only quick menu icons with cleaner symbolic icons
+- Clarified docs that no LLM, email connector, cloud connector, or online assistant API exists yet
+
 ## v0.3.0 beta
 
 Pip v0.3 introduces an Assistive Touch-style companion layer.

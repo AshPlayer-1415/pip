@@ -19,6 +19,9 @@ const { createStore } = require('./storage');
 const { messageBank, nudgeLabels, pickMessage } = require('./messages');
 const packageJson = require('../package.json');
 
+const APP_NAME = 'Winsy AI';
+const OLD_APP_NAME = 'Pip';
+const DEFAULT_COMPANION_NAME = 'Winsy';
 const NUDGE_KEYS = ['water', 'eyeBreak', 'stretch', 'motivation'];
 const BUBBLE_SIZES = {
   small: 58,
@@ -35,13 +38,13 @@ const ASSISTANT_SIZE = { width: 318, height: 206 };
 const CHECK_INTERVAL_MS = 30 * 1000;
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff', '.heic']);
 const QUICK_ACTION_OPTIONS = {
-  assistant: { id: 'assistant', label: 'Pip Assistant', icon: 'P' },
-  screenshot: { id: 'screenshot', label: 'Screenshot', icon: 'S' },
-  notes: { id: 'notes', label: 'Open Notes', icon: 'N' },
-  lock: { id: 'lock', label: 'Lock Screen', icon: 'L' },
-  downloads: { id: 'downloads', label: 'Open Downloads', icon: 'D' },
-  applications: { id: 'applications', label: 'Open Applications', icon: 'A' },
-  focus: { id: 'focus', label: 'Focus Instructions', icon: 'F' }
+  assistant: { id: 'assistant', label: 'Winsy Assistant', icon: '✦' },
+  screenshot: { id: 'screenshot', label: 'Screenshot', icon: '⌘' },
+  notes: { id: 'notes', label: 'Open Notes', icon: '✎' },
+  lock: { id: 'lock', label: 'Lock Screen', icon: '🔒' },
+  downloads: { id: 'downloads', label: 'Open Downloads', icon: '↓' },
+  applications: { id: 'applications', label: 'Open Applications', icon: '▦' },
+  focus: { id: 'focus', label: 'Focus Instructions', icon: '☾' }
 };
 const DEFAULT_QUICK_MENU = {
   actionCount: 6,
@@ -50,7 +53,7 @@ const DEFAULT_QUICK_MENU = {
 
 const defaultState = {
   onboardingComplete: false,
-  companionName: 'Pip',
+  companionName: DEFAULT_COMPANION_NAME,
   personality: 'cozy',
   privateMode: false,
   presentationSafeMode: false,
@@ -135,9 +138,28 @@ function clearNotice() {
   appNotice = null;
 }
 
+function appDataDirectory(name) {
+  return path.join(app.getPath('appData'), name);
+}
+
+function configureUserDataPath() {
+  const newUserData = appDataDirectory(APP_NAME);
+  const oldUserData = appDataDirectory(OLD_APP_NAME);
+
+  try {
+    if (!fs.existsSync(newUserData) && fs.existsSync(oldUserData)) {
+      fs.cpSync(oldUserData, newUserData, { recursive: true });
+    }
+  } catch (error) {
+    console.error('Unable to migrate old local app data:', error);
+  }
+
+  app.setPath('userData', newUserData);
+}
+
 function saveState() {
   if (!store.write(state)) {
-    setNotice(store.getLastError() || 'Pip could not save changes locally.', 'error');
+    setNotice(store.getLastError() || `${APP_NAME} could not save changes locally.`, 'error');
   }
   broadcastState();
   updateShelfVisibility();
@@ -298,8 +320,8 @@ function quickMenuItems() {
     .map((id) => QUICK_ACTION_OPTIONS[id]);
 
   return [
-    { id: 'home', label: 'Pip Home', icon: 'H' },
-    { id: 'storage', label: 'Storage', icon: 'Q' },
+    { id: 'home', label: 'Winsy Home', icon: '⌂' },
+    { id: 'storage', label: 'Storage', icon: '◫' },
     ...customActions
   ].slice(0, state.quickMenu.actionCount);
 }
@@ -307,7 +329,10 @@ function quickMenuItems() {
 function normalizeState(nextState) {
   const normalized = deepMerge(defaultState, nextState || {});
 
-  normalized.companionName = String(normalized.companionName || 'Pip').trim().slice(0, 28) || 'Pip';
+  normalized.companionName = String(normalized.companionName || DEFAULT_COMPANION_NAME).trim().slice(0, 28) || DEFAULT_COMPANION_NAME;
+  if (normalized.companionName === OLD_APP_NAME && !(nextState && nextState.onboardingComplete)) {
+    normalized.companionName = DEFAULT_COMPANION_NAME;
+  }
   if (!messageBank[normalized.personality]) {
     normalized.personality = 'cozy';
   }
@@ -404,9 +429,9 @@ function publicState() {
     })),
     nudgeLabels,
     appInfo: {
-      name: 'Pip',
+      name: APP_NAME,
       version: packageJson.version,
-      description: 'A gentle local-first desktop companion for reminders, breaks, and motivation.',
+      description: 'A local-first macOS assistant companion for reminders, storage, and quick actions.',
       privacy: 'Local-first. No account. No cloud sync.'
     },
     notice: appNotice,
@@ -482,10 +507,10 @@ function buildTrayMenu() {
     return;
   }
 
-  tray.setToolTip(`${state.companionName || 'Pip'} is running locally`);
+  tray.setToolTip(`${state.companionName || DEFAULT_COMPANION_NAME} is running locally`);
   tray.setContextMenu(Menu.buildFromTemplate([
     {
-      label: quickMenuWindow && quickMenuWindow.isVisible() ? 'Hide Pip Menu' : 'Open Pip Menu',
+      label: quickMenuWindow && quickMenuWindow.isVisible() ? `Hide ${DEFAULT_COMPANION_NAME} Menu` : `Open ${DEFAULT_COMPANION_NAME} Menu`,
       click: toggleQuickMenu
     },
     {
@@ -496,7 +521,7 @@ function buildTrayMenu() {
     },
     { type: 'separator' },
     {
-      label: 'Quit Pip',
+      label: `Quit ${APP_NAME}`,
       click: () => app.quit()
     }
   ]));
@@ -505,15 +530,15 @@ function buildTrayMenu() {
 function buildApplicationMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
-      label: 'Pip',
+      label: APP_NAME,
       submenu: [
         { role: 'about' },
         { type: 'separator' },
-        { role: 'hide', label: 'Hide Pip' },
+        { role: 'hide', label: `Hide ${APP_NAME}` },
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit', label: 'Quit Pip' }
+        { role: 'quit', label: `Quit ${APP_NAME}` }
       ]
     },
     {
@@ -629,6 +654,7 @@ function createBubbleWindow() {
     resizable: false,
     movable: true,
     alwaysOnTop: true,
+    focusable: true,
     skipTaskbar: true,
     hasShadow: false,
     show: false,
@@ -639,7 +665,8 @@ function createBubbleWindow() {
     }
   });
 
-  bubbleWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  bubbleWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  bubbleWindow.setAlwaysOnTop(true, 'floating');
   bubbleWindow.loadFile(path.join(__dirname, 'bubble.html'));
   bubbleWindow.once('ready-to-show', () => {
     positionBubble();
@@ -736,6 +763,7 @@ function createShelfWindow() {
     resizable: false,
     movable: false,
     alwaysOnTop: true,
+    focusable: true,
     skipTaskbar: true,
     hasShadow: false,
     show: false,
@@ -746,7 +774,8 @@ function createShelfWindow() {
     }
   });
 
-  shelfWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  shelfWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  shelfWindow.setAlwaysOnTop(true, 'floating');
   shelfWindow.loadFile(path.join(__dirname, 'storage-shelf.html'));
   shelfWindow.webContents.on('did-finish-load', () => {
     sendShelfAnchor();
@@ -779,6 +808,7 @@ function createQuickMenuWindow() {
     resizable: false,
     movable: false,
     alwaysOnTop: true,
+    focusable: true,
     skipTaskbar: true,
     hasShadow: false,
     show: false,
@@ -789,7 +819,8 @@ function createQuickMenuWindow() {
     }
   });
 
-  quickMenuWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  quickMenuWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  quickMenuWindow.setAlwaysOnTop(true, 'floating');
   quickMenuWindow.loadFile(path.join(__dirname, 'quick-menu.html'));
   quickMenuWindow.webContents.on('did-finish-load', () => {
     sendQuickMenuAnchor();
@@ -817,6 +848,7 @@ function showQuickMenu() {
   hideAssistant();
   positionQuickMenu();
   quickMenuWindow.show();
+  app.focus({ steal: true });
   quickMenuWindow.focus();
   broadcastState();
   buildTrayMenu();
@@ -870,6 +902,7 @@ function createAssistantWindow() {
     resizable: false,
     movable: false,
     alwaysOnTop: true,
+    focusable: true,
     skipTaskbar: true,
     hasShadow: false,
     show: false,
@@ -880,7 +913,8 @@ function createAssistantWindow() {
     }
   });
 
-  assistantWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  assistantWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  assistantWindow.setAlwaysOnTop(true, 'floating');
   assistantWindow.loadFile(path.join(__dirname, 'assistant.html'));
   assistantWindow.webContents.on('did-finish-load', () => {
     sendAssistantAnchor();
@@ -897,6 +931,7 @@ function showAssistant() {
 
   positionAssistant();
   assistantWindow.show();
+  app.focus({ steal: true });
   assistantWindow.focus();
 }
 
@@ -934,6 +969,7 @@ function createStoragePromptWindow() {
     resizable: false,
     movable: false,
     alwaysOnTop: true,
+    focusable: true,
     skipTaskbar: true,
     hasShadow: false,
     show: false,
@@ -944,6 +980,8 @@ function createStoragePromptWindow() {
     }
   });
 
+  storagePromptWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  storagePromptWindow.setAlwaysOnTop(true, 'floating');
   storagePromptWindow.loadFile(path.join(__dirname, 'storage-prompt.html'));
   storagePromptWindow.webContents.on('did-finish-load', () => {
     broadcastStoragePrompt();
@@ -956,6 +994,14 @@ function createStoragePromptWindow() {
 }
 
 function showStoragePrompt(prompt) {
+  if (storagePrompt && storagePrompt.id === prompt.id) {
+    positionStoragePrompt();
+    if (storagePromptWindow && !storagePromptWindow.isDestroyed()) {
+      storagePromptWindow.showInactive();
+    }
+    return;
+  }
+
   storagePrompt = prompt;
   if (!storagePromptWindow || storagePromptWindow.isDestroyed()) {
     createStoragePromptWindow();
@@ -984,7 +1030,7 @@ function createPanelWindow() {
     resizable: true,
     show: false,
     skipTaskbar: true,
-    title: 'Pip',
+    title: APP_NAME,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -992,6 +1038,8 @@ function createPanelWindow() {
     }
   });
 
+  panelWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  panelWindow.setAlwaysOnTop(true, 'floating');
   panelWindow.loadFile(path.join(__dirname, 'panel.html'));
   panelWindow.webContents.on('did-finish-load', () => {
     sendPanelAnchor();
@@ -1017,6 +1065,7 @@ function showPanel(view = 'dashboard') {
   hideAssistant();
   positionPanel();
   panelWindow.show();
+  app.focus({ steal: true });
   panelWindow.focus();
   panelWindow.webContents.send('panel:view', requestedPanelView);
   broadcastState();
@@ -1097,13 +1146,13 @@ function sendNativeNotification({ title, body, genericBody = 'You have a private
   let notification;
   try {
     notification = new Notification({
-      title: state.privateMode ? 'Pip reminder' : title,
+      title: state.privateMode ? `${DEFAULT_COMPANION_NAME} reminder` : title,
       body: state.privateMode ? genericBody : body,
       silent: false
     });
   } catch (error) {
     console.error('Unable to create notification:', error);
-    setNotice('Pip could not create a notification.', 'warning');
+    setNotice(`${APP_NAME} could not create a notification.`, 'warning');
     broadcastState();
     return;
   }
@@ -1120,7 +1169,7 @@ function sendNativeNotification({ title, body, genericBody = 'You have a private
     notification.show();
   } catch (error) {
     console.error('Unable to show notification:', error);
-    setNotice('Pip could not show a notification. Check macOS notification settings.', 'warning');
+    setNotice(`${APP_NAME} could not show a notification. Check macOS notification settings.`, 'warning');
     broadcastState();
   }
 }
@@ -1149,7 +1198,7 @@ function showNudge(category, options = {}) {
   saveState();
 
   sendNativeNotification({
-    title: `${state.companionName || 'Pip'} check-in`,
+    title: `${state.companionName || DEFAULT_COMPANION_NAME} check-in`,
     body: message,
     genericBody: 'A gentle check-in is ready.',
     onClick: showPanel
@@ -1182,7 +1231,7 @@ function showReminder(reminder) {
 
   state.currentNudge = item;
   sendNativeNotification({
-    title: state.privateMode ? `${state.companionName || 'Pip'} reminder` : `${state.companionName || 'Pip'} reminder`,
+    title: state.privateMode ? `${state.companionName || DEFAULT_COMPANION_NAME} reminder` : `${state.companionName || DEFAULT_COMPANION_NAME} reminder`,
     body: reminder.title,
     genericBody: 'A private reminder is ready.',
     onClick: showPanel
@@ -1414,7 +1463,7 @@ function addQuickStorageFiles(paths, kind) {
       copied.push(copyQuickStorageFile(sourcePath, kind));
     } catch (error) {
       console.error('Unable to add Quick Storage file:', error);
-      setNotice('Pip could not store one of those files.', 'warning');
+      setNotice(`${APP_NAME} could not store one of those files.`, 'warning');
     }
   }
 
@@ -1436,7 +1485,7 @@ function showDropStoragePrompt(paths) {
   });
 
   if (!validPaths.length) {
-    setNotice('Drop a file onto Pip to save it.', 'warning');
+    setNotice(`Drop a file onto ${DEFAULT_COMPANION_NAME} to save it.`, 'warning');
     broadcastState();
     return;
   }
@@ -1526,7 +1575,7 @@ function resetPip() {
     fs.rmSync(customAvatarDirectory(), { recursive: true, force: true });
     fs.rmSync(path.join(app.getPath('userData'), 'quick-storage'), { recursive: true, force: true });
   } catch (error) {
-    console.error('Unable to clear Pip local storage files:', error);
+    console.error(`Unable to clear ${APP_NAME} local storage files:`, error);
   }
   state = normalizeState(defaultState);
   lastReminderCheckAt = new Date();
@@ -1540,7 +1589,7 @@ function applyOnboardingPayload(payload = {}, options = {}) {
   const personality = messageBank[payload.personality]
     ? payload.personality
     : (options.complete ? 'cozy' : (messageBank[state.personality] ? state.personality : 'cozy'));
-  state.companionName = String(payload.companionName || state.companionName || 'Pip').trim().slice(0, 28) || 'Pip';
+  state.companionName = String(payload.companionName || state.companionName || DEFAULT_COMPANION_NAME).trim().slice(0, 28) || DEFAULT_COMPANION_NAME;
   state.personality = personality;
 
   if (typeof payload.privateMode === 'boolean') {
@@ -1572,7 +1621,7 @@ function applyOnboardingPayload(payload = {}, options = {}) {
   }
 }
 
-function runCommand(file, args = [], fallbackMessage = 'Pip could not complete that action.', fallbackView = null) {
+function runCommand(file, args = [], fallbackMessage = `${APP_NAME} could not complete that action.`, fallbackView = null) {
   execFile(file, args, (error) => {
     if (error) {
       console.error('Quick action failed:', error);
@@ -1620,7 +1669,7 @@ function performQuickAction(actionId) {
   }
 
   if (actionId === 'notes') {
-    runCommand('/usr/bin/open', ['-a', 'Notes'], 'Pip could not open Notes.', 'dashboard');
+    runCommand('/usr/bin/open', ['-a', 'Notes'], `${APP_NAME} could not open Notes.`, 'dashboard');
     return publicState();
   }
 
@@ -1630,12 +1679,12 @@ function performQuickAction(actionId) {
   }
 
   if (actionId === 'downloads') {
-    openPathOrNotice(app.getPath('downloads'), 'Pip could not open Downloads.');
+    openPathOrNotice(app.getPath('downloads'), `${APP_NAME} could not open Downloads.`);
     return publicState();
   }
 
   if (actionId === 'applications') {
-    openPathOrNotice('/Applications', 'Pip could not open Applications.');
+    openPathOrNotice('/Applications', `${APP_NAME} could not open Applications.`);
     return publicState();
   }
 
@@ -1737,7 +1786,7 @@ function registerIpc() {
 
   ipcMain.handle('settings:update', (_event, patch = {}) => {
     if (typeof patch.companionName === 'string') {
-      state.companionName = patch.companionName.trim().slice(0, 28) || 'Pip';
+      state.companionName = patch.companionName.trim().slice(0, 28) || DEFAULT_COMPANION_NAME;
     }
     if (messageBank[patch.personality]) {
       state.personality = patch.personality;
@@ -1830,7 +1879,7 @@ function registerIpc() {
   ipcMain.handle('avatar:chooseCustom', async () => {
     const parentWindow = panelWindow && !panelWindow.isDestroyed() ? panelWindow : undefined;
     const options = {
-      title: 'Choose Pip Avatar',
+      title: `Choose ${DEFAULT_COMPANION_NAME} Avatar`,
       properties: ['openFile'],
       filters: [
         { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }
@@ -1850,7 +1899,7 @@ function registerIpc() {
       saveState();
     } catch (error) {
       console.error('Unable to copy custom avatar:', error);
-      setNotice('Pip could not save that avatar image locally.', 'error');
+      setNotice(`${APP_NAME} could not save that avatar image locally.`, 'error');
       broadcastState();
     }
 
@@ -1884,7 +1933,7 @@ function registerIpc() {
     if (item && fs.existsSync(item.storedPath)) {
       const error = await shell.openPath(item.storedPath);
       if (error) {
-        setNotice('Pip could not open that file.', 'warning');
+        setNotice(`${APP_NAME} could not open that file.`, 'warning');
         broadcastState();
       }
     } else if (item && (kind === 'temp' || kind === 'permanent')) {
@@ -1952,7 +2001,7 @@ function registerIpc() {
         click: async () => {
           const error = await shell.openPath(item.storedPath);
           if (error) {
-            setNotice('Pip could not open that file.', 'warning');
+            setNotice(`${APP_NAME} could not open that file.`, 'warning');
             broadcastState();
           }
         }
@@ -2020,12 +2069,13 @@ function registerIpc() {
   });
 }
 
-app.setName('Pip');
+app.setName(APP_NAME);
 
 app.whenReady().then(() => {
-  app.setName('Pip');
+  app.setName(APP_NAME);
+  configureUserDataPath();
   app.setAboutPanelOptions({
-    applicationName: 'Pip',
+    applicationName: APP_NAME,
     applicationVersion: packageJson.version,
     version: packageJson.version
   });
@@ -2069,7 +2119,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  // Pip is a menu bar companion, so closing windows should not quit the app.
+  // Winsy AI is a menu bar companion, so closing windows should not quit the app.
 });
 
 app.on('before-quit', () => {

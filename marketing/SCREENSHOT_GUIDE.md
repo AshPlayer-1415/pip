@@ -1,6 +1,6 @@
-# Pip Screenshot Guide
+# Winsy AI Screenshot Guide
 
-Capture screenshots on macOS in dark mode. Use a clean desktop background, hide unrelated menu bar items when possible, and crop tightly around Pip unless the floating bubble context is important.
+Capture screenshots on macOS in dark mode. Use a clean desktop background, hide unrelated menu bar items when possible, and crop tightly around Winsy AI unless the floating bubble context is important.
 
 Save final screenshots in:
 
@@ -21,11 +21,11 @@ Recommended filenames:
 
 ## 1. Onboarding
 
-Capture the first welcome screen after a fresh Reset Pip or clean first launch.
+Capture the first welcome screen after a fresh Reset Winsy AI or clean first launch.
 
 Show:
 
-- Pip welcome copy
+- Winsy AI welcome copy
 - companion avatar
 - compact dark panel
 - no personal reminder data

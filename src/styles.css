@@ -483,6 +483,91 @@ button {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.time-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 82px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(9, 11, 15, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.time-wheel {
+  min-width: 0;
+  height: 96px;
+  display: grid;
+  grid-template-rows: 24px 1fr 24px;
+  align-items: center;
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  outline: none;
+  overflow: hidden;
+}
+
+.time-wheel:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.time-step,
+.time-value,
+.period-option {
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.time-step {
+  color: var(--quiet);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.time-step:hover {
+  color: var(--text);
+}
+
+.time-value {
+  min-height: 44px;
+  border-radius: 11px;
+  font-size: 26px;
+  font-weight: 760;
+  line-height: 1;
+  transition: transform 140ms ease, background 140ms ease;
+}
+
+.time-value:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.time-separator {
+  color: var(--quiet);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.period-toggle {
+  display: grid;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.period-option {
+  min-height: 38px;
+  border-radius: 11px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.period-option.is-selected {
+  color: #111217;
+  background: var(--accent);
+}
+
 .personality-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

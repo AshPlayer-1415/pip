@@ -49,6 +49,36 @@ function defaultReminderTime() {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+function parseTimeParts(value) {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(value || ''));
+  const hours = match ? Math.min(23, Math.max(0, Number(match[1]))) : 9;
+  const minutes = match ? Math.min(59, Math.max(0, Number(match[2]))) : 0;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+
+  return {
+    hour: hour12,
+    minute: minutes,
+    period
+  };
+}
+
+function timePartsToValue({ hour, minute, period }) {
+  const normalizedHour = Math.min(12, Math.max(1, Number(hour) || 12));
+  const normalizedMinute = Math.min(59, Math.max(0, Number(minute) || 0));
+  let hours = normalizedHour % 12;
+  if (period === 'PM') {
+    hours += 12;
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(normalizedMinute).padStart(2, '0')}`;
+}
+
+function displayReminderTime(value) {
+  const parts = parseTimeParts(value);
+  return `${parts.hour}:${String(parts.minute).padStart(2, '0')} ${parts.period}`;
+}
+
 function formatStorageDate(value) {
   if (!value) {
     return '';
@@ -385,7 +415,7 @@ function renderReminders() {
           <div class="list-item">
             <div class="item-main">
               <p class="item-title">${escapeHtml(state.privateMode ? 'Private reminder' : reminder.title)}</p>
-              <div class="item-meta">${escapeHtml(typeLabels[reminder.type] || 'Custom')} at ${escapeHtml(reminder.time)}</div>
+              <div class="item-meta">${escapeHtml(typeLabels[reminder.type] || 'Custom')} at ${escapeHtml(displayReminderTime(reminder.time))}</div>
             </div>
             <div class="button-row">
               <button class="toggle ${reminder.enabled ? 'is-on' : ''}" data-reminder-toggle="${reminder.id}" data-enabled="${reminder.enabled ? 'false' : 'true'}" title="Toggle reminder"></button>
@@ -395,6 +425,37 @@ function renderReminders() {
         `).join('') : '<p class="empty-copy">No reminders.</p>'}
       </div>
     </section>
+  `;
+}
+
+function renderTimePicker(time) {
+  const parts = parseTimeParts(time);
+  const value = timePartsToValue(parts);
+  return `
+    <div
+      class="time-picker"
+      data-time-picker
+      data-hour="${parts.hour}"
+      data-minute="${parts.minute}"
+      data-period="${parts.period}"
+    >
+      <input type="hidden" name="time" value="${escapeHtml(value)}" required />
+      <div class="time-wheel" data-time-wheel="hour" tabindex="0" aria-label="Hour">
+        <button class="time-step" data-time-step="hour" data-direction="-1" type="button" aria-label="Previous hour">^</button>
+        <button class="time-value" data-time-value="hour" data-time-step="hour" data-direction="1" type="button">${parts.hour}</button>
+        <button class="time-step" data-time-step="hour" data-direction="1" type="button" aria-label="Next hour">v</button>
+      </div>
+      <div class="time-separator">:</div>
+      <div class="time-wheel" data-time-wheel="minute" tabindex="0" aria-label="Minute">
+        <button class="time-step" data-time-step="minute" data-direction="-1" type="button" aria-label="Previous minute">^</button>
+        <button class="time-value" data-time-value="minute" data-time-step="minute" data-direction="1" type="button">${String(parts.minute).padStart(2, '0')}</button>
+        <button class="time-step" data-time-step="minute" data-direction="1" type="button" aria-label="Next minute">v</button>
+      </div>
+      <div class="period-toggle" aria-label="AM or PM">
+        <button class="period-option ${parts.period === 'AM' ? 'is-selected' : ''}" data-time-period="AM" type="button">AM</button>
+        <button class="period-option ${parts.period === 'PM' ? 'is-selected' : ''}" data-time-period="PM" type="button">PM</button>
+      </div>
+    </div>
   `;
 }
 
@@ -527,10 +588,10 @@ function renderAddReminder() {
             <span>Title</span>
             <input class="input" name="title" maxlength="80" required />
           </label>
-          <label class="field">
+          <div class="field">
             <span>Time</span>
-            <input class="input" name="time" type="time" value="${time}" required />
-          </label>
+            ${renderTimePicker(time)}
+          </div>
           <label class="field">
             <span>Type</span>
             <select class="select" name="type">
@@ -664,6 +725,56 @@ function formData(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
+function readTimePickerParts(picker) {
+  return {
+    hour: Number(picker.dataset.hour) || 12,
+    minute: Number(picker.dataset.minute) || 0,
+    period: picker.dataset.period === 'PM' ? 'PM' : 'AM'
+  };
+}
+
+function updateTimePicker(picker, nextParts) {
+  const parts = {
+    ...readTimePickerParts(picker),
+    ...nextParts
+  };
+
+  parts.hour = ((Number(parts.hour) - 1 + 12) % 12) + 1;
+  parts.minute = ((Number(parts.minute) % 60) + 60) % 60;
+  parts.period = parts.period === 'PM' ? 'PM' : 'AM';
+
+  picker.dataset.hour = String(parts.hour);
+  picker.dataset.minute = String(parts.minute);
+  picker.dataset.period = parts.period;
+
+  const hourValue = picker.querySelector('[data-time-value="hour"]');
+  const minuteValue = picker.querySelector('[data-time-value="minute"]');
+  const input = picker.querySelector('input[name="time"]');
+  if (hourValue) {
+    hourValue.textContent = String(parts.hour);
+  }
+  if (minuteValue) {
+    minuteValue.textContent = String(parts.minute).padStart(2, '0');
+  }
+  if (input) {
+    input.value = timePartsToValue(parts);
+  }
+
+  for (const button of picker.querySelectorAll('[data-time-period]')) {
+    button.classList.toggle('is-selected', button.dataset.timePeriod === parts.period);
+  }
+}
+
+function stepTimePicker(picker, part, direction) {
+  const parts = readTimePickerParts(picker);
+  if (part === 'hour') {
+    parts.hour += direction;
+  } else if (part === 'minute') {
+    parts.minute += direction;
+  }
+  updateTimePicker(picker, parts);
+}
+
 app.addEventListener('click', async (event) => {
   const target = event.target.closest('button');
   if (!target || !state) {
@@ -677,6 +788,22 @@ app.addEventListener('click', async (event) => {
 
   if (target.dataset.action === 'clearNotice') {
     await refresh(await window.pipAPI.clearNotice());
+    return;
+  }
+
+  if (target.dataset.timeStep) {
+    const picker = target.closest('[data-time-picker]');
+    if (picker) {
+      stepTimePicker(picker, target.dataset.timeStep, Number(target.dataset.direction) || 1);
+    }
+    return;
+  }
+
+  if (target.dataset.timePeriod) {
+    const picker = target.closest('[data-time-picker]');
+    if (picker) {
+      updateTimePicker(picker, { period: target.dataset.timePeriod });
+    }
     return;
   }
 
@@ -878,6 +1005,38 @@ app.addEventListener('click', async (event) => {
   if (target.dataset.settingToggle) {
     const key = target.dataset.settingToggle;
     await refresh(await window.pipAPI.updateSettings({ [key]: !state[key] }));
+  }
+});
+
+app.addEventListener('wheel', (event) => {
+  const wheel = event.target.closest('[data-time-wheel]');
+  if (!wheel) {
+    return;
+  }
+
+  const picker = wheel.closest('[data-time-picker]');
+  if (!picker) {
+    return;
+  }
+
+  event.preventDefault();
+  stepTimePicker(picker, wheel.dataset.timeWheel, event.deltaY > 0 ? 1 : -1);
+}, { passive: false });
+
+app.addEventListener('keydown', (event) => {
+  const wheel = event.target.closest('[data-time-wheel]');
+  if (!wheel) {
+    return;
+  }
+
+  const picker = wheel.closest('[data-time-picker]');
+  if (!picker) {
+    return;
+  }
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    stepTimePicker(picker, wheel.dataset.timeWheel, event.key === 'ArrowDown' ? 1 : -1);
   }
 });
 

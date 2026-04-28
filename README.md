@@ -2,11 +2,11 @@
 
 Winsy AI is a local-first macOS assistant companion for reminders, quick storage, and lightweight desktop actions.
 
-Winsy lives in the menu bar, keeps a small movable companion bubble on your desktop, and opens an Assistive Touch-style quick menu for common actions. This phase is a rebrand and stability release before real AI is added.
+Winsy lives in the menu bar, keeps a small movable companion bubble on your desktop, and opens an Assistive Touch-style quick menu for common actions. This phase plans the optional local assistant layer before real AI is added.
 
 ## Status
 
-Winsy AI is currently moving through a `v0.4.0` beta branch. It is local-first, simple, and intentionally does not include a real LLM, email connector, cloud sync, or online assistant API yet.
+Winsy AI is currently moving through a `v0.5.0` planning branch. It is local-first, simple, and intentionally does not include a real LLM, email connector, cloud sync, or online assistant API yet.
 
 ## Features
 
@@ -81,6 +81,7 @@ src/storage.js           Local JSON persistence helper
 
 ## Roadmap
 
+- v0.5 contains local assistant planning only; no real LLM is included yet
 - Optional local assistant via Ollama or a bundled small model
 - Voice input and output
 - App actions with explicit user approval

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.5.0 planning
+
+Winsy AI v0.5 plans the optional local assistant architecture without adding a real LLM yet.
+
+- Added future local assistant architecture notes
+- Added phased AI roadmap from command parsing through optional local and online connectors
+- Added strict assistant safety rules for confirmations, sensitive actions, and local-only logs
+- Added internal command schema for future reminders, files, notes, email drafts, and app actions
+- Added assistant UI planning for a compact desktop companion panel
+- Documented that v0.5 does not include Ollama integration, bundled models, email connectors, online APIs, or voice features
+
 ## v0.4.0 beta
 
 Winsy AI v0.4 is a rebrand and stability release before real AI is added.

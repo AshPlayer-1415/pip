@@ -8,11 +8,31 @@
   </head>
   <body class="assistant-body anchor-right">
     <main class="assistant-card">
-      <div>
-        <p class="assistant-kicker">Winsy Assistant</p>
-        <h1>Local assistant coming soon.</h1>
+      <header class="assistant-header">
+        <div>
+          <p class="assistant-kicker">Winsy Assistant</p>
+          <h1>Local command mode</h1>
+        </div>
+        <button class="icon-button" id="closeAssistant" type="button" title="Close">x</button>
+      </header>
+
+      <form class="assistant-form" id="assistantForm">
+        <label class="sr-only" for="assistantInput">Command</label>
+        <div class="assistant-input-row">
+          <input class="input assistant-input" id="assistantInput" type="text" autocomplete="off" placeholder="Type a command..." />
+          <button class="button primary assistant-send" id="assistantSend" type="submit">Send</button>
+        </div>
+      </form>
+
+      <div class="assistant-examples" aria-label="Examples">
+        <button type="button" data-example="remind me at 7 pm">remind me at 7 pm</button>
+        <button type="button" data-example="open notes">open notes</button>
+        <button type="button" data-example="search storage resume">search storage resume</button>
       </div>
-      <button class="button ghost" id="closeAssistant" type="button">Close</button>
+
+      <section class="assistant-response" id="assistantResponse" aria-live="polite">
+        <p>Try a local command. No AI model is running yet.</p>
+      </section>
     </main>
     <script src="./assistant.js"></script>
   </body>

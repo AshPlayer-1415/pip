@@ -15,6 +15,7 @@ const {
   Tray,
   screen
 } = require('electron');
+const { createCommandEngine } = require('./command-engine');
 const { createStore } = require('./storage');
 const { messageBank, nudgeLabels, pickMessage } = require('./messages');
 const packageJson = require('../package.json');
@@ -34,7 +35,7 @@ const SHELF_SIZE = { width: 214, height: 108 };
 const SHELF_COLLAPSED_SIZE = { width: 58, height: 58 };
 const SHELF_GAP = 8;
 const QUICK_MENU_SIZE = { width: 318, height: 254 };
-const ASSISTANT_SIZE = { width: 318, height: 206 };
+const ASSISTANT_SIZE = { width: 342, height: 318 };
 const CHECK_INTERVAL_MS = 30 * 1000;
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff', '.heic']);
 const QUICK_ACTION_OPTIONS = {
@@ -1697,6 +1698,44 @@ function performQuickAction(actionId) {
   return publicState();
 }
 
+function searchQuickStorageItems({ query } = {}) {
+  const needle = String(query || '').trim().toLowerCase();
+  if (!needle) {
+    return [];
+  }
+
+  return [...state.quickStorage.temp, ...state.quickStorage.permanent].filter((item) => (
+    String(item.filename || '').toLowerCase().includes(needle) ||
+    String(item.originalPath || '').toLowerCase().includes(needle)
+  ));
+}
+
+function createAssistantCommandEngine() {
+  return createCommandEngine({
+    setReminder() {
+      return null;
+    },
+    listReminders() {
+      return state.reminders.filter((reminder) => reminder.enabled !== false);
+    },
+    openApp() {
+      return null;
+    },
+    openDownloads() {
+      return null;
+    },
+    openApplications() {
+      return null;
+    },
+    searchQuickStorage: searchQuickStorageItems
+  }, { previewOnly: true });
+}
+
+async function handleAssistantCommand(input) {
+  const commandEngine = createAssistantCommandEngine();
+  return commandEngine.handleTextCommand(input);
+}
+
 function registerIpc() {
   ipcMain.handle('app:getState', () => publicState());
   ipcMain.handle('app:togglePanel', () => togglePanel());
@@ -1707,6 +1746,7 @@ function registerIpc() {
     hideAssistant();
     return publicState();
   });
+  ipcMain.handle('assistant:command', (_event, input) => handleAssistantCommand(input));
   ipcMain.handle('quickMenu:action', (_event, actionId) => performQuickAction(actionId));
   ipcMain.handle('app:clearNotice', () => {
     clearNotice();

@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('pipAPI', {
   showPanel: () => ipcRenderer.invoke('app:showPanel'),
   closePanel: () => ipcRenderer.invoke('app:closePanel'),
   closeAssistant: () => ipcRenderer.invoke('app:closeAssistant'),
+  runAssistantCommand: (input) => ipcRenderer.invoke('assistant:command', input),
   clearNotice: () => ipcRenderer.invoke('app:clearNotice'),
   resetPip: () => ipcRenderer.invoke('app:reset'),
   setBubbleExpanded: (expanded) => ipcRenderer.invoke('bubble:setExpanded', expanded),

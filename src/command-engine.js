@@ -98,7 +98,7 @@ function inferReminderType(title) {
 }
 
 function parseReminderCommand(input) {
-  const match = /^(?:remind me to|set reminder(?: to)?|set a reminder(?: to)?|reminder to)\s+(.+)$/i.exec(input);
+  const match = /^(?:remind me(?: to)?|set reminder(?: to)?|set a reminder(?: to)?|reminder to)\s+(.+)$/i.exec(input);
   if (!match) {
     return null;
   }
@@ -244,7 +244,9 @@ function countMessage(value, singular, plural) {
   return null;
 }
 
-function createCommandEngine(handlers = {}) {
+function createCommandEngine(handlers = {}, options = {}) {
+  const previewOnly = options.previewOnly === true;
+
   async function handleTextCommand(input) {
     const parsed = parseTextCommand(input);
 
@@ -268,6 +270,14 @@ function createCommandEngine(handlers = {}) {
     try {
       switch (parsed.command) {
         case 'set_reminder': {
+          if (previewOnly) {
+            return buildResult({
+              ok: true,
+              command: parsed.command,
+              message: `Ready to set a reminder for ${formatTime12(parsed.payload.time)}.`
+            });
+          }
+
           await maybeCall(handlers.setReminder, parsed.payload);
           return buildResult({
             ok: true,
@@ -287,6 +297,14 @@ function createCommandEngine(handlers = {}) {
         }
 
         case 'open_app': {
+          if (previewOnly) {
+            return buildResult({
+              ok: true,
+              command: parsed.command,
+              message: `Ready to open ${parsed.payload.appName}.`
+            });
+          }
+
           await maybeCall(handlers.openApp, parsed.payload);
           return buildResult({
             ok: true,
@@ -296,6 +314,14 @@ function createCommandEngine(handlers = {}) {
         }
 
         case 'open_downloads': {
+          if (previewOnly) {
+            return buildResult({
+              ok: true,
+              command: parsed.command,
+              message: 'Ready to show Downloads.'
+            });
+          }
+
           await maybeCall(handlers.openDownloads, parsed.payload);
           return buildResult({
             ok: true,
@@ -305,6 +331,14 @@ function createCommandEngine(handlers = {}) {
         }
 
         case 'open_applications': {
+          if (previewOnly) {
+            return buildResult({
+              ok: true,
+              command: parsed.command,
+              message: 'Ready to show Applications.'
+            });
+          }
+
           await maybeCall(handlers.openApplications, parsed.payload);
           return buildResult({
             ok: true,

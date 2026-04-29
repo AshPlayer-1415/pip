@@ -134,6 +134,14 @@ async function run() {
     requiresConfirmation: false
   });
 
+  result = parseTextCommand('remind me at 7 pm');
+  assert.deepStrictEqual(result, {
+    ok: false,
+    command: 'set_reminder',
+    message: 'Add a reminder title.',
+    requiresConfirmation: false
+  });
+
   result = parseTextCommand('winsy please make me coffee');
   assert.deepStrictEqual(result, {
     ok: false,
@@ -141,6 +149,22 @@ async function run() {
     message: 'Winsy does not know that command yet.',
     requiresConfirmation: false
   });
+
+  const previewCalls = [];
+  const previewEngine = createCommandEngine({
+    openApp(payload) {
+      previewCalls.push(payload);
+    }
+  }, { previewOnly: true });
+
+  result = await previewEngine.handleTextCommand('open notes');
+  assert.deepStrictEqual(result, {
+    ok: true,
+    command: 'open_app',
+    message: 'Ready to open Notes.',
+    requiresConfirmation: false
+  });
+  assert.deepStrictEqual(previewCalls, []);
 
   console.log('Command engine tests passed.');
 }

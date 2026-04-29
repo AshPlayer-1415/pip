@@ -1316,7 +1316,7 @@ button {
 
 .assistant-response {
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
   color: var(--muted);
   font-size: 13px;
 }
@@ -1333,6 +1333,71 @@ button {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.assistant-items {
+  display: grid;
+  gap: 6px;
+}
+
+.assistant-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.assistant-item-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.assistant-item-copy strong,
+.assistant-item-copy span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-item-copy strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assistant-item-copy span {
+  color: var(--quiet);
+  font-size: 11px;
+}
+
+.assistant-item-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.assistant-item-actions button {
+  padding: 5px 7px;
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.assistant-item-actions button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.assistant-item-actions button:disabled {
+  cursor: default;
+  opacity: 0.56;
 }
 
 .assistant-response-card.ok {

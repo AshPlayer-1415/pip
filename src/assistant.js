@@ -16,6 +16,33 @@ function escapeHtml(value) {
 function renderResponse(result) {
   const tone = result.ok ? 'ok' : 'error';
   const confirmation = result.requiresConfirmation ? '<span class="assistant-chip">Needs confirmation</span>' : '';
+  const items = Array.isArray(result.items) ? result.items : [];
+  const itemMarkup = items.length ? `
+    <div class="assistant-items">
+      ${items.map((item, index) => `
+        <article class="assistant-item">
+          <div class="assistant-item-copy">
+            <strong>${escapeHtml(item.title || 'Item')}</strong>
+            ${item.meta ? `<span>${escapeHtml(item.meta)}</span>` : ''}
+          </div>
+          ${Array.isArray(item.actions) && item.actions.length ? `
+            <div class="assistant-item-actions">
+              ${item.actions.map((action) => `
+                <button
+                  type="button"
+                  data-assistant-action="${escapeHtml(action.action)}"
+                  data-kind="${escapeHtml(action.kind)}"
+                  data-id="${escapeHtml(action.id)}"
+                  data-index="${index}"
+                >${escapeHtml(action.label)}</button>
+              `).join('')}
+            </div>
+          ` : ''}
+        </article>
+      `).join('')}
+    </div>
+  ` : '';
+
   response.innerHTML = `
     <div class="assistant-response-card ${tone}">
       <div class="assistant-response-top">
@@ -23,6 +50,7 @@ function renderResponse(result) {
         ${confirmation}
       </div>
       <p>${escapeHtml(result.message || 'Winsy heard you.')}</p>
+      ${itemMarkup}
     </div>
   `;
 }
@@ -72,6 +100,29 @@ document.querySelectorAll('[data-example]').forEach((button) => {
     input.value = button.dataset.example;
     input.focus();
   });
+});
+
+response.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-assistant-action]');
+  if (!button) {
+    return;
+  }
+
+  const payload = {
+    kind: button.dataset.kind,
+    id: button.dataset.id
+  };
+
+  button.disabled = true;
+  try {
+    if (button.dataset.assistantAction === 'openStorageFile') {
+      await window.pipAPI.openStorageFile(payload);
+    } else if (button.dataset.assistantAction === 'revealStorageFile') {
+      await window.pipAPI.revealStorageFile(payload);
+    }
+  } finally {
+    button.disabled = false;
+  }
 });
 
 window.pipAPI.onAssistantAnchorChanged((side) => {

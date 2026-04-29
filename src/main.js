@@ -47,6 +47,7 @@ const QUICK_ACTION_OPTIONS = {
   applications: { id: 'applications', label: 'Open Applications', icon: '▦' },
   focus: { id: 'focus', label: 'Focus Instructions', icon: '☾' }
 };
+const ASSISTANT_ALLOWED_APPS = new Set(['Notes', 'Safari', 'Google Chrome', 'Finder', 'Calendar', 'Mail']);
 const DEFAULT_QUICK_MENU = {
   actionCount: 6,
   actions: ['assistant', 'screenshot', 'notes', 'lock']
@@ -1635,6 +1636,19 @@ function runCommand(file, args = [], fallbackMessage = `${APP_NAME} could not co
   });
 }
 
+function runCommandAsync(file, args = []) {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, (error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
 function openPathOrNotice(targetPath, fallbackMessage) {
   shell.openPath(targetPath).then((error) => {
     if (error) {
@@ -1704,31 +1718,103 @@ function searchQuickStorageItems({ query } = {}) {
     return [];
   }
 
-  return [...state.quickStorage.temp, ...state.quickStorage.permanent].filter((item) => (
+  const matches = [
+    ...state.quickStorage.temp.map((item) => ({ ...item, kind: 'temp' })),
+    ...state.quickStorage.permanent.map((item) => ({ ...item, kind: 'permanent' }))
+  ].filter((item) => (
     String(item.filename || '').toLowerCase().includes(needle) ||
     String(item.originalPath || '').toLowerCase().includes(needle)
   ));
+
+  return {
+    message: matches.length
+      ? `Found ${matches.length} file${matches.length === 1 ? '' : 's'}.`
+      : `No files matched "${query}".`,
+    items: matches.slice(0, 5).map((item) => ({
+      title: item.filename,
+      meta: item.kind === 'temp' ? 'Temporary' : 'Permanent',
+      actions: [
+        { label: 'Open', action: 'openStorageFile', kind: item.kind, id: item.id },
+        { label: 'Reveal', action: 'revealStorageFile', kind: item.kind, id: item.id }
+      ]
+    }))
+  };
+}
+
+function formatReminderItem(reminder) {
+  const scheduledAt = scheduledDateForReminder(reminder);
+  return {
+    title: state.privateMode ? 'Private reminder' : reminder.title,
+    meta: scheduledAt ? `${displayTime(scheduledAt)} · ${reminder.type}` : reminder.type
+  };
+}
+
+function addAssistantReminder(payload) {
+  const reminder = sanitizeReminder(payload);
+  if (!reminder) {
+    throw new Error('Add a title and a valid time.');
+  }
+
+  state.reminders.unshift(reminder);
+  saveState();
+  return {
+    message: `Reminder set for ${displayTime(scheduledDateForReminder(reminder))}.`,
+    items: [formatReminderItem(reminder)]
+  };
+}
+
+function listAssistantReminders() {
+  const reminders = state.reminders
+    .filter((reminder) => reminder.enabled !== false)
+    .map((reminder) => ({
+      reminder,
+      scheduledAt: scheduledDateForReminder(reminder)
+    }))
+    .filter((item) => item.scheduledAt)
+    .sort((a, b) => a.scheduledAt - b.scheduledAt)
+    .slice(0, 5)
+    .map((item) => item.reminder);
+
+  return {
+    message: reminders.length
+      ? `Next ${reminders.length} reminder${reminders.length === 1 ? '' : 's'}.`
+      : 'No reminders yet.',
+    items: reminders.map(formatReminderItem)
+  };
+}
+
+async function openAssistantApp({ appName } = {}) {
+  if (!ASSISTANT_ALLOWED_APPS.has(appName)) {
+    throw new Error('Winsy can open Notes, Safari, Chrome, Finder, Calendar, or Mail for now.');
+  }
+
+  try {
+    await runCommandAsync('/usr/bin/open', ['-a', appName]);
+  } catch (error) {
+    throw new Error(`${APP_NAME} could not open ${appName}.`);
+  }
+
+  return { message: `Opened ${appName}.` };
+}
+
+async function openAssistantPath(targetPath, label) {
+  const error = await shell.openPath(targetPath);
+  if (error) {
+    throw new Error(`${APP_NAME} could not open ${label}.`);
+  }
+
+  return { message: `Opened ${label}.` };
 }
 
 function createAssistantCommandEngine() {
   return createCommandEngine({
-    setReminder() {
-      return null;
-    },
-    listReminders() {
-      return state.reminders.filter((reminder) => reminder.enabled !== false);
-    },
-    openApp() {
-      return null;
-    },
-    openDownloads() {
-      return null;
-    },
-    openApplications() {
-      return null;
-    },
+    setReminder: addAssistantReminder,
+    listReminders: listAssistantReminders,
+    openApp: openAssistantApp,
+    openDownloads: () => openAssistantPath(app.getPath('downloads'), 'Downloads'),
+    openApplications: () => openAssistantPath('/Applications', 'Applications'),
     searchQuickStorage: searchQuickStorageItems
-  }, { previewOnly: true });
+  });
 }
 
 async function handleAssistantCommand(input) {

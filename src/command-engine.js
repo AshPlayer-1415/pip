@@ -25,7 +25,7 @@ function normalizeForMatch(value) {
     .replace(/[.!?]+$/g, '');
 }
 
-function buildResult({ ok, command, message, requiresConfirmation = false, confirmationPayload }) {
+function buildResult({ ok, command, message, requiresConfirmation = false, confirmationPayload, items }) {
   const result = {
     ok: Boolean(ok),
     command: command || 'unknown',
@@ -35,6 +35,10 @@ function buildResult({ ok, command, message, requiresConfirmation = false, confi
 
   if (confirmationPayload && typeof confirmationPayload === 'object') {
     result.confirmationPayload = confirmationPayload;
+  }
+
+  if (Array.isArray(items) && items.length) {
+    result.items = items;
   }
 
   return result;
@@ -244,6 +248,14 @@ function countMessage(value, singular, plural) {
   return null;
 }
 
+function commandData(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value;
+  }
+
+  return { value };
+}
+
 function createCommandEngine(handlers = {}, options = {}) {
   const previewOnly = options.previewOnly === true;
 
@@ -278,21 +290,24 @@ function createCommandEngine(handlers = {}, options = {}) {
             });
           }
 
-          await maybeCall(handlers.setReminder, parsed.payload);
+          const data = commandData(await maybeCall(handlers.setReminder, parsed.payload));
           return buildResult({
             ok: true,
             command: parsed.command,
-            message: `Reminder set for ${formatTime12(parsed.payload.time)}.`
+            message: data.message || `Reminder set for ${formatTime12(parsed.payload.time)}.`,
+            items: data.items
           });
         }
 
         case 'list_reminders': {
-          const reminders = await maybeCall(handlers.listReminders, parsed.payload);
+          const data = commandData(await maybeCall(handlers.listReminders, parsed.payload));
+          const reminders = data.items || data.value;
           const count = countMessage(reminders, 'reminder', 'reminders');
           return buildResult({
             ok: true,
             command: parsed.command,
-            message: count ? `You have ${count}.` : 'Showing reminders.'
+            message: data.message || (count ? `You have ${count}.` : 'No reminders yet.'),
+            items: data.items
           });
         }
 
@@ -305,11 +320,11 @@ function createCommandEngine(handlers = {}, options = {}) {
             });
           }
 
-          await maybeCall(handlers.openApp, parsed.payload);
+          const data = commandData(await maybeCall(handlers.openApp, parsed.payload));
           return buildResult({
             ok: true,
             command: parsed.command,
-            message: `Opening ${parsed.payload.appName}.`
+            message: data.message || `Opening ${parsed.payload.appName}.`
           });
         }
 
@@ -322,11 +337,11 @@ function createCommandEngine(handlers = {}, options = {}) {
             });
           }
 
-          await maybeCall(handlers.openDownloads, parsed.payload);
+          const data = commandData(await maybeCall(handlers.openDownloads, parsed.payload));
           return buildResult({
             ok: true,
             command: parsed.command,
-            message: 'Opening Downloads.'
+            message: data.message || 'Opening Downloads.'
           });
         }
 
@@ -339,21 +354,23 @@ function createCommandEngine(handlers = {}, options = {}) {
             });
           }
 
-          await maybeCall(handlers.openApplications, parsed.payload);
+          const data = commandData(await maybeCall(handlers.openApplications, parsed.payload));
           return buildResult({
             ok: true,
             command: parsed.command,
-            message: 'Opening Applications.'
+            message: data.message || 'Opening Applications.'
           });
         }
 
         case 'search_quick_storage': {
-          const matches = await maybeCall(handlers.searchQuickStorage, parsed.payload);
+          const data = commandData(await maybeCall(handlers.searchQuickStorage, parsed.payload));
+          const matches = data.items || data.value;
           const count = countMessage(matches, 'match', 'matches');
           return buildResult({
             ok: true,
             command: parsed.command,
-            message: count ? `Found ${count} in Quick Storage.` : `Searching Quick Storage for "${parsed.payload.query}".`
+            message: data.message || (count ? `Found ${count} in Quick Storage.` : `No Quick Storage matches for "${parsed.payload.query}".`),
+            items: data.items
           });
         }
 

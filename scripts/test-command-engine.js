@@ -86,10 +86,15 @@ async function run() {
   assert.deepStrictEqual(result, {
     ok: true,
     command: 'lock_screen',
-    message: 'Confirm before Winsy locks the screen.',
+    message: 'Lock your Mac?',
     requiresConfirmation: true,
     confirmationPayload: {
       command: 'lock_screen',
+      riskLevel: 'medium',
+      actionSummary: 'Lock your Mac?',
+      description: 'Winsy will lock the current macOS session.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
       parameters: {}
     }
   });

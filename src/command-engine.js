@@ -44,6 +44,66 @@ function buildResult({ ok, command, message, requiresConfirmation = false, confi
   return result;
 }
 
+function confirmationPayloadFor(command, parameters = {}) {
+  const confirmations = {
+    lock_screen: {
+      command: 'lock_screen',
+      riskLevel: 'medium',
+      actionSummary: 'Lock your Mac?',
+      description: 'Winsy will lock the current macOS session.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
+      parameters
+    },
+    delete_file: {
+      command: 'delete_file',
+      riskLevel: 'high',
+      actionSummary: 'Delete this file?',
+      description: 'Future file deletion commands must confirm here first.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      parameters
+    },
+    send_email: {
+      command: 'send_email',
+      riskLevel: 'high',
+      actionSummary: 'Send this email?',
+      description: 'Future email commands must confirm here first.',
+      confirmLabel: 'Send',
+      cancelLabel: 'Cancel',
+      parameters
+    },
+    move_file: {
+      command: 'move_file',
+      riskLevel: 'high',
+      actionSummary: 'Move this file?',
+      description: 'Future file move commands must confirm here first.',
+      confirmLabel: 'Move',
+      cancelLabel: 'Cancel',
+      parameters
+    },
+    run_terminal_command: {
+      command: 'run_terminal_command',
+      riskLevel: 'high',
+      actionSummary: 'Run this terminal command?',
+      description: 'Future terminal commands must confirm here first.',
+      confirmLabel: 'Run',
+      cancelLabel: 'Cancel',
+      parameters
+    }
+  };
+
+  return confirmations[command] || {
+    command,
+    riskLevel: 'high',
+    actionSummary: 'Confirm this action?',
+    description: 'Winsy needs your approval before continuing.',
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
+    parameters
+  };
+}
+
 function normalizeReminderTime(hourValue, minuteValue = '0', periodValue = '') {
   const rawHour = Number(hourValue);
   const rawMinute = Number(minuteValue || 0);
@@ -267,15 +327,13 @@ function createCommandEngine(handlers = {}, options = {}) {
     }
 
     if (parsed.requiresConfirmation) {
+      const confirmationPayload = confirmationPayloadFor(parsed.command, parsed.payload || {});
       return buildResult({
         ok: true,
         command: parsed.command,
-        message: 'Confirm before Winsy locks the screen.',
+        message: confirmationPayload.actionSummary,
         requiresConfirmation: true,
-        confirmationPayload: {
-          command: parsed.command,
-          parameters: parsed.payload || {}
-        }
+        confirmationPayload
       });
     }
 
@@ -394,6 +452,7 @@ function createCommandEngine(handlers = {}, options = {}) {
 }
 
 module.exports = {
+  confirmationPayloadFor,
   createCommandEngine,
   formatTime12,
   normalizeReminderTime,

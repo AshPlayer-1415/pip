@@ -2,6 +2,7 @@ const form = document.getElementById('assistantForm');
 const input = document.getElementById('assistantInput');
 const sendButton = document.getElementById('assistantSend');
 const response = document.getElementById('assistantResponse');
+let pendingConfirmation = null;
 
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, (character) => ({
@@ -17,6 +18,22 @@ function renderResponse(result) {
   const tone = result.ok ? 'ok' : 'error';
   const confirmation = result.requiresConfirmation ? '<span class="assistant-chip">Needs confirmation</span>' : '';
   const items = Array.isArray(result.items) ? result.items : [];
+  pendingConfirmation = result.requiresConfirmation && result.confirmationPayload
+    ? result.confirmationPayload
+    : null;
+
+  const confirmationMarkup = pendingConfirmation ? `
+    <div class="assistant-confirmation">
+      <div>
+        <strong>${escapeHtml(pendingConfirmation.actionSummary || result.message || 'Confirm this action?')}</strong>
+        ${pendingConfirmation.description ? `<span>${escapeHtml(pendingConfirmation.description)}</span>` : ''}
+      </div>
+      <div class="assistant-confirmation-actions">
+        <button type="button" data-confirmation-cancel>${escapeHtml(pendingConfirmation.cancelLabel || 'Cancel')}</button>
+        <button type="button" class="primary" data-confirmation-confirm>${escapeHtml(pendingConfirmation.confirmLabel || 'Confirm')}</button>
+      </div>
+    </div>
+  ` : '';
   const itemMarkup = items.length ? `
     <div class="assistant-items">
       ${items.map((item, index) => `
@@ -50,6 +67,7 @@ function renderResponse(result) {
         ${confirmation}
       </div>
       <p>${escapeHtml(result.message || 'Winsy heard you.')}</p>
+      ${confirmationMarkup}
       ${itemMarkup}
     </div>
   `;
@@ -69,6 +87,7 @@ async function submitCommand(commandText) {
 
   sendButton.disabled = true;
   response.innerHTML = '<p>Reading command...</p>';
+  pendingConfirmation = null;
 
   try {
     const result = await window.pipAPI.runAssistantCommand(command);
@@ -103,6 +122,35 @@ document.querySelectorAll('[data-example]').forEach((button) => {
 });
 
 response.addEventListener('click', async (event) => {
+  const confirmButton = event.target.closest('[data-confirmation-confirm]');
+  if (confirmButton && pendingConfirmation) {
+    confirmButton.disabled = true;
+    try {
+      const result = await window.pipAPI.confirmAssistantCommand(pendingConfirmation);
+      renderResponse(result);
+    } catch (error) {
+      renderResponse({
+        ok: false,
+        command: pendingConfirmation.command || 'unknown',
+        message: 'Winsy could not confirm that action.',
+        requiresConfirmation: false
+      });
+    }
+    return;
+  }
+
+  const cancelButton = event.target.closest('[data-confirmation-cancel]');
+  if (cancelButton) {
+    pendingConfirmation = null;
+    renderResponse({
+      ok: true,
+      command: 'cancel',
+      message: 'Cancelled.',
+      requiresConfirmation: false
+    });
+    return;
+  }
+
   const button = event.target.closest('[data-assistant-action]');
   if (!button) {
     return;

@@ -1806,6 +1806,43 @@ async function openAssistantPath(targetPath, label) {
   return { message: `Opened ${label}.` };
 }
 
+async function executeAssistantConfirmation(payload = {}) {
+  if (!payload || typeof payload !== 'object') {
+    return {
+      ok: false,
+      command: 'unknown',
+      message: 'Winsy could not confirm that action.',
+      requiresConfirmation: false
+    };
+  }
+
+  if (payload.command === 'lock_screen') {
+    try {
+      await runCommandAsync('/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession', ['-suspend']);
+      return {
+        ok: true,
+        command: 'lock_screen',
+        message: 'Locking your Mac.',
+        requiresConfirmation: false
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        command: 'lock_screen',
+        message: 'Use Control-Command-Q to lock this Mac.',
+        requiresConfirmation: false
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    command: payload.command || 'unknown',
+    message: 'Winsy cannot run that action yet.',
+    requiresConfirmation: false
+  };
+}
+
 function createAssistantCommandEngine() {
   return createCommandEngine({
     setReminder: addAssistantReminder,
@@ -1833,6 +1870,7 @@ function registerIpc() {
     return publicState();
   });
   ipcMain.handle('assistant:command', (_event, input) => handleAssistantCommand(input));
+  ipcMain.handle('assistant:confirm', (_event, payload) => executeAssistantConfirmation(payload));
   ipcMain.handle('quickMenu:action', (_event, actionId) => performQuickAction(actionId));
   ipcMain.handle('app:clearNotice', () => {
     clearNotice();

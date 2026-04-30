@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.6.0 beta
+
+Winsy AI v0.6 adds the first local command engine without adding an LLM.
+
+- Added a rule-based command parser for simple typed assistant commands
+- Replaced the assistant placeholder with a compact local command mode panel
+- Added assistant commands for setting reminders and listing upcoming reminders
+- Added safe local actions for opening Notes, Safari, Chrome, Finder, Calendar, Mail, Downloads, and Applications
+- Added Quick Storage search from the assistant with Open and Reveal actions for matching files
+- Added confirmation cards for medium/high-risk assistant actions
+- Added lock screen confirmation so the Mac is never locked silently
+- Kept reminders, Quick Storage, onboarding, Private Mode, Presentation Safe Mode, and DMG packaging intact
+- Clarified that no LLM, voice, email connector, cloud connector, or online assistant API exists yet
+
 ## v0.4.0 beta
 
 Winsy AI v0.4 is a rebrand and stability release before real AI is added.

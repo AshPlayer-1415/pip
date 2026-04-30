@@ -1,12 +1,12 @@
 # Winsy AI
 
-Winsy AI is a local-first macOS assistant companion for reminders, quick storage, and lightweight desktop actions.
+Winsy AI is a local-first macOS assistant companion for reminders, quick storage, lightweight desktop actions, and simple local command mode.
 
-Winsy lives in the menu bar, keeps a small movable companion bubble on your desktop, and opens an Assistive Touch-style quick menu for common actions. This phase is a rebrand and stability release before real AI is added.
+Winsy lives in the menu bar, keeps a small movable companion bubble on your desktop, and opens an Assistive Touch-style quick menu for common actions. v0.6 adds a rule-based command mode before real AI is added.
 
 ## Status
 
-Winsy AI is currently moving through a `v0.4.0` beta branch. It is local-first, simple, and intentionally does not include a real LLM, email connector, cloud sync, or online assistant API yet.
+Winsy AI is currently moving through a `v0.6.0` command engine beta branch. It is local-first, simple, and intentionally does not include a real LLM, email connector, cloud sync, voice feature, or online assistant API yet.
 
 ## Features
 
@@ -14,6 +14,7 @@ Winsy AI is currently moving through a `v0.4.0` beta branch. It is local-first, 
 - Assistive Touch-style quick menu for Winsy Home, Storage, and desktop actions
 - Quick Storage for temporary and permanent local files
 - Collapsible Quick Storage shelf near the floating bubble
+- Rule-based Winsy Assistant command mode for reminders, app opening, folders, and Quick Storage search
 - Emoji avatars or local custom image avatars
 - First-time onboarding for companion name, personality, reminders, and privacy preference
 - Local reminders for pills, birthdays, tasks, and custom items
@@ -30,7 +31,7 @@ Winsy AI is local-first:
 - No account or login
 - No cloud sync
 - No remote database
-- No real AI model or online assistant API in this phase
+- No real AI model, voice feature, or online assistant API in this phase
 - No email reading, email drafting, or cloud connectors exist yet
 - Settings, reminders, avatar images, and Quick Storage files are stored locally in Electron's `userData` folder
 
@@ -46,6 +47,23 @@ npm start
 ```
 
 On first launch, Winsy AI opens onboarding. After setup, the floating bubble can be moved and will restore its saved position.
+
+## Local Command Mode
+
+The Winsy Assistant panel uses a small rule-based parser. It does not use an LLM yet.
+
+Sample commands:
+
+- `remind me to drink water at 7 pm`
+- `set reminder take pills at 8:30 am`
+- `list reminders`
+- `open notes`
+- `open downloads`
+- `open applications`
+- `search storage resume`
+- `lock screen`
+
+Medium-risk actions, such as locking the Mac, require an in-app confirmation before they run.
 
 ## Build the macOS DMG
 
@@ -68,8 +86,9 @@ src/bubble.html          Floating companion bubble shell
 src/bubble.js            Bubble popup behavior and quick menu toggle
 src/quick-menu.html      Assistive Touch-style quick menu shell
 src/quick-menu.js        Quick menu behavior
-src/assistant.html       Winsy Assistant placeholder shell
-src/assistant.js         Winsy Assistant placeholder behavior
+src/assistant.html       Winsy Assistant command panel shell
+src/assistant.js         Winsy Assistant command panel behavior
+src/command-engine.js    Rule-based local command parser and result formatter
 src/storage-shelf.html   Quick Storage shelf shell
 src/storage-shelf.js     Quick Storage shelf behavior
 src/storage-prompt.html  Quick Storage prompt shell

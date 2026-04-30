@@ -1,8 +1,10 @@
 # Known Limitations
 
-Winsy AI v0.4.0 beta is a focused local-first desktop beta. Current limitations:
+Winsy AI v0.6.0 beta is a focused local-first desktop beta. Current limitations:
 
-- The Winsy Assistant panel is a placeholder only. No real LLM is bundled or connected yet.
+- The Winsy Assistant command parser is rule-based. It is not a real LLM.
+- No real LLM is bundled or connected yet.
+- Assistant commands are limited to simple reminder, app/folder opening, lock confirmation, and Quick Storage search flows.
 - There are no email connectors, cloud connectors, ChatGPT connectors, Claude connectors, or online assistant APIs yet.
 - Presentation Safe Mode is manual. Winsy AI does not automatically detect every screen-sharing or presentation state.
 - macOS notification delivery depends on system notification permissions, Focus modes, and Notification Center behavior.
@@ -10,5 +12,5 @@ Winsy AI v0.4.0 beta is a focused local-first desktop beta. Current limitations:
 - Reminders are simple daily time-based reminders. Winsy AI does not yet support complex recurrence rules.
 - Quick Storage supports local files dragged onto Winsy. Folders are ignored in this beta.
 - Temporary Quick Storage cleanup runs while Winsy AI is open.
-- The app is packaged for macOS. Other platforms are not part of the v0.4.0 beta.
+- The app is packaged for macOS. Other platforms are not part of the v0.6.0 beta.
 - The local DMG build is not notarized unless valid Apple Developer notarization credentials are configured.

@@ -1,7 +1,7 @@
 {
   "name": "winsy-ai",
   "productName": "Winsy AI",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "description": "A local-first macOS assistant companion for reminders, quick storage, and desktop actions.",
   "main": "src/main.js",
   "author": "Winsy AI",
